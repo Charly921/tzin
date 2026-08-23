@@ -181,4 +181,4 @@ npm run typecheck # strict tsc across src/test/bench fixtures
 
 ## License
 
-MIT (pending)
+MIT — see [LICENSE](./LICENSE).

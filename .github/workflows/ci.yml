@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Tests
+        run: npm test
+      - name: MCP stdio probe
+        run: node scripts/mcp-client.mjs
+
+  bun-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Boot demo and hit endpoints
+        run: |
+          bun examples/bun-demo.ts &
+          sleep 2
+          curl -fs http://localhost:4620/health | grep -q '"status":"ok"'
+          curl -fs -X POST http://localhost:4620/echo \
+            -H 'content-type: application/json' \
+            -d '{"message":"ci","loud":true}' | grep -q '"echoed":"CI"'

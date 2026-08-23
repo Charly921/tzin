@@ -2,6 +2,12 @@
   "name": "tzin",
   "version": "0.1.0",
   "description": "Contract-first TypeScript framework. Types that scale.",
+  "license": "MIT",
+  "author": "The tzin authors",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Charly921/tzin"
+  },
   "private": true,
   "type": "module",
   "scripts": {
