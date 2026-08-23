@@ -124,6 +124,11 @@ Comandos: `npm test`, `npm run typecheck`, benchmarks: `npx tsc -p bench/tsconfi
 - **Inspector oficial** (`npx @modelcontextprotocol/inspector --cli`): tools/list ✓, tools/call con path params planos ✓, query plana ✓, 404→isError ✓.
 - Demo ejecutable: `examples/mcp-demo.ts` (`npx tsx examples/mcp-demo.ts`).
 
+### Validación externa — ✅ Bun verificado en runtime real (23 ago 2026)
+- Bun 1.4.0 instalado (~/.bun/bin).
+- `examples/bun-demo.ts` (`bun examples/bun-demo.ts`, puerto 4620): health OK (reporta `runtime: bun 1.4.0` vía `Bun.version`), POST /echo con validación de body OK, body inválido → 400 con details ✓.
+- `serveBun()` confirmado funcional; resolver de imports `.js`→`.ts` de Bun funciona sin cambios.
+
 ---
 
 ## 6. Estado del roadmap y próximos pasos
@@ -137,7 +142,7 @@ Comandos: `npm test`, `npm run typecheck`, benchmarks: `npx tsc -p bench/tsconfi
 
 **Validación externa (alta prioridad)**
 1. ~~Probar el MCP server con un cliente real~~ ✅ HECHO (ver sección "Validación externa").
-2. Verificar `serveBun()` instalando Bun (`curl -fsSL https://bun.sh/install | bash`).
+2. ~~Verificar `serveBun()`~~ ✅ HECHO (Bun 1.4.0, ver sección "Validación externa").
 3. Publicar repo en GitHub + decidir licencia (README dice "MIT pending") + revisar si SESSION.md sale del repo público.
 
 **Producto**
