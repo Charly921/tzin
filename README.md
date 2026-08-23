@@ -113,6 +113,10 @@ documented blow-ups compound further when `zValidator` inference enters the chai
 - **Web Standards runtime.** `Request` in, `Response` out; adapters stay thin.
 - **Extractors over magic.** Handlers receive exactly what the contract declares.
 - **Errors are control flow.** Throw typed errors; the response union already knows.
+- **Light DI without ceremony.** `provide(key, value)` at app level seeds typed
+  singletons into every request's context — handlers just `ctx.require(db)`.
+  Request-scoped middleware can override. No decorators, no reflection, no
+  container configuration files.
 
 ## Roadmap
 
@@ -121,7 +125,7 @@ documented blow-ups compound further when `zValidator` inference enters the chai
 - [ ] Adapters: Node (done, minimal), Workers (done), Bun (written against documented API, unverified)
 - [x] Streaming/SSE (`sse()` helper + `raw()` escape hatch)
 - [ ] Streaming/SSE
-- [ ] Optional light DI layer
+- [x] Optional light DI layer (`provide()` → typed singleton seeds in request context)
 - [ ] AI-native toolchain (MCP server exposing contracts to agents)
 
 ## Development

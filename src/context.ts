@@ -19,7 +19,12 @@ export function defineContext<T>(name: string): ContextKey<T> {
 export class Ctx {
   #map = new Map<ContextKey<never>, unknown>()
 
-  constructor(public readonly signal?: AbortSignal) {}
+  constructor(
+    public readonly signal?: AbortSignal,
+    seed?: ReadonlyMap<ContextKey<never>, unknown>,
+  ) {
+    if (seed) for (const [k, v] of seed) this.#map.set(k, v)
+  }
 
   get<T>(key: ContextKey<T>): T | undefined {
     return this.#map.get(key as ContextKey<never>) as T | undefined

@@ -1,6 +1,6 @@
-import { describe, expect, expectTypeOf, it } from 'vitest'
+import { describe, expect, expectTypeOf, it, vi } from 'vitest'
 import { t } from '../src/schema.js'
-import { contract, impl, HttpError, createApp, generateOpenApi, listen, client, middleware, defineContext } from '../src/index.js'
+import { contract, impl, HttpError, createApp, generateOpenApi, listen, client, middleware, defineContext, provide } from '../src/index.js'
 import { sse } from '../src/sse.js'
 import type { Ctx } from '../src/index.js'
 import type { ResponseOf, HandlerInput, PathParamNames } from '../src/contract.js'
@@ -334,5 +334,55 @@ describe('streaming', () => {
     expect(text).toContain('event: ping\ndata: {"n":1}\n\n')
     expect(text).toContain(': keep-alive\n\n')
     expect(text).toContain('event: done\ndata: {"ok":true}\n\n')
+  })
+})
+
+describe('dependency injection', () => {
+  interface Counter {
+    count(): number
+  }
+  const counter = defineContext<Counter>('counter')
+  const countFn = vi.fn((): number => 1)
+  const instance: Counter = { count: countFn }
+
+  const stats = contract({
+    method: 'GET',
+    path: '/stats',
+    responses: { 200: t.Object({ n: t.Number() }) },
+  })
+
+  it('provides app-scoped singletons to handlers, typed', async () => {
+    let calls = 0
+    const route = impl(stats, async ({ ctx }) => {
+      expectTypeOf(ctx.require(counter)).toEqualTypeOf<Counter>()
+      calls++
+      return { status: 200, body: { n: ctx.require(counter).count() } }
+    })
+
+    const app = createApp([route], { provides: [provide(counter, instance)] })
+    await app.fetch(new Request('http://x/stats'))
+    await app.fetch(new Request('http://x/stats'))
+
+    expect(calls).toBe(2)
+    expect(countFn).toHaveBeenCalledTimes(2)
+  })
+
+  it('middleware may overwrite a provided seed (request scope wins)', async () => {
+    const override = middleware(async ({ ctx, next }) => {
+      ctx.set(counter, { count: () => 42 })
+      return next()
+    })
+    const route = impl(stats, async ({ ctx }) => ({
+      status: 200,
+      body: { n: ctx.require(counter).count() },
+    }))
+
+    const app = createApp([route], {
+      middleware: [override],
+      provides: [provide(counter, instance)],
+    })
+    const res = await app.fetch(new Request('http://x/stats'))
+
+    expect(await res.json()).toEqual({ n: 42 })
   })
 })

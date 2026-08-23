@@ -1,8 +1,9 @@
 import { Value } from './schema.js'
 import { HttpError, isRawResult, type RouteImpl } from './contract.js'
 import { matchPath } from './router.js'
-import { Ctx } from './context.js'
+import { Ctx, type ContextKey } from './context.js'
 import { compose, type Middleware } from './middleware.js'
+import type { ProvidedEntry } from './provide.js'
 
 export interface App {
   routes: RouteImpl<any>[]
@@ -11,6 +12,7 @@ export interface App {
 
 export interface AppOptions {
   middleware?: Middleware[]
+  provides?: ProvidedEntry[]
 }
 
 function validationError(section: string, schema: unknown, value: unknown): HttpError {
@@ -71,10 +73,13 @@ export function createApp(routes: RouteImpl<any>[], options: AppOptions = {}): A
   }
 
   const handle = compose(options.middleware ?? [], dispatch)
+  const seed = new Map<ContextKey<never>, unknown>(
+    options.provides?.map((e) => [e.key, e.value]),
+  )
 
   async function fetch(req: Request): Promise<Response> {
     try {
-      return await handle(req, new Ctx(req.signal))
+      return await handle(req, new Ctx(req.signal, seed))
     } catch (err) {
       if (err instanceof HttpError) {
         return Response.json({ error: err.message, details: err.details }, { status: err.status })

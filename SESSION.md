@@ -116,8 +116,8 @@ Comandos: `npm test`, `npm run typecheck`, benchmarks: `npx tsc -p bench/tsconfi
 - [x] Adaptadores: `toWorker()` para Cloudflare Workers; `serveBun()` escrito según API documentada (**sin verificar** — no hay bun en el entorno). Node existente.
 - [x] Streaming: `sse(producer)` → RawResult con ReadableStream (`event`/`comment`), y escape hatch general `raw(response)` en la unión de retorno del handler. Test e2e de eventos vía app.fetch. 18 tests.
 
-### C. Roadmap estratégico (de la investigación) — PENDIENTE
-- [ ] Arquitectura/DI ligera opcional (hueco #4121).
+### C. Roadmap estratégico (de la investigación) — EN CURSO
+- [x] DI ligera: `provide(key, value)` a nivel app siembra singletons en el Ctx de cada request; handlers leen con `ctx.require(key)` tipado. Middleware puede sobreescribir (request scope gana). 20 tests.
 - [ ] Toolchain AI-native: MCP server que exponga contratos a agentes + `llms.txt`.
 - [ ] Segundo acto: realtime/presence nativo (Channels + Presence estilo Phoenix).
 
