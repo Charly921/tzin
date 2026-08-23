@@ -1,10 +1,16 @@
 import { Value } from './schema.js'
 import { HttpError, type RouteImpl } from './contract.js'
 import { matchPath } from './router.js'
+import { Ctx } from './context.js'
+import { compose, type Middleware } from './middleware.js'
 
 export interface App {
   routes: RouteImpl<any>[]
   fetch(req: Request): Promise<Response>
+}
+
+export interface AppOptions {
+  middleware?: Middleware[]
 }
 
 function validationError(section: string, schema: unknown, value: unknown): HttpError {
@@ -22,8 +28,8 @@ function check(section: string, schema: unknown, value: unknown): void {
  * Runtime-agnostic app: pure (req) => res over Web Standards.
  * Testable without a server (app.fetch), adaptable to Node/Bun/Deno/Workers.
  */
-export function createApp(routes: RouteImpl<any>[]): App {
-  async function fetch(req: Request): Promise<Response> {
+export function createApp(routes: RouteImpl<any>[], options: AppOptions = {}): App {
+  async function dispatch(req: Request, ctx: Ctx): Promise<Response> {
     const url = new URL(req.url)
 
     for (const route of routes) {
@@ -32,43 +38,49 @@ export function createApp(routes: RouteImpl<any>[]): App {
       const params = matchPath(c.path, url.pathname)
       if (!params) continue
 
-      try {
-        const input: Record<string, unknown> = {}
+      const input: Record<string, unknown> = { ctx }
 
-        if ('params' in c && c.params) {
-          check('path params', c.params, params)
-          input.params = params
-        }
-
-        if ('query' in c && c.query) {
-          const rawQuery = Object.fromEntries(url.searchParams.entries())
-          check('query', c.query, rawQuery)
-          input.query = rawQuery
-        }
-
-        if ('body' in c && c.body) {
-          let json: unknown
-          try {
-            json = await req.json()
-          } catch {
-            throw new HttpError(400, 'Malformed JSON body')
-          }
-          check('body', c.body, json)
-          input.body = json
-        }
-
-        const result = await route.handler(input as never)
-        return Response.json(result.body, { status: result.status })
-      } catch (err) {
-        if (err instanceof HttpError) {
-          return Response.json({ error: err.message, details: err.details }, { status: err.status })
-        }
-        console.error(err)
-        return Response.json({ error: 'Internal Server Error' }, { status: 500 })
+      if ('params' in c && c.params) {
+        check('path params', c.params, params)
+        input.params = params
       }
+
+      if ('query' in c && c.query) {
+        const rawQuery = Object.fromEntries(url.searchParams.entries())
+        check('query', c.query, rawQuery)
+        input.query = rawQuery
+      }
+
+      if ('body' in c && c.body) {
+        let json: unknown
+        try {
+          json = await req.json()
+        } catch {
+          throw new HttpError(400, 'Malformed JSON body')
+        }
+        check('body', c.body, json)
+        input.body = json
+      }
+
+      const result = await route.handler(input as never)
+      return Response.json(result.body, { status: result.status })
     }
 
-    return Response.json({ error: 'Not Found' }, { status: 404 })
+    throw new HttpError(404, 'Not Found')
+  }
+
+  const handle = compose(options.middleware ?? [], dispatch)
+
+  async function fetch(req: Request): Promise<Response> {
+    try {
+      return await handle(req, new Ctx())
+    } catch (err) {
+      if (err instanceof HttpError) {
+        return Response.json({ error: err.message, details: err.details }, { status: err.status })
+      }
+      console.error(err)
+      return Response.json({ error: 'Internal Server Error' }, { status: 500 })
+    }
   }
 
   return { routes, fetch }

@@ -1,6 +1,7 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import { t } from '../src/schema.js'
-import { contract, impl, HttpError, createApp, generateOpenApi, listen, client } from '../src/index.js'
+import { contract, impl, HttpError, createApp, generateOpenApi, listen, client, middleware, defineContext } from '../src/index.js'
+import type { Ctx } from '../src/index.js'
 import type { ResponseOf, HandlerInput, PathParamNames } from '../src/contract.js'
 
 /* ---------------- domain contracts ---------------- */
@@ -43,11 +44,13 @@ const health = contract({
   responses: { 200: t.Literal('ok') },
 })
 
+const healthRoute = impl(health, async () => ({ status: 200 as const, body: 'ok' as const }))
+
 const db = new Map<string, { id: string; name: string; email?: string; tags?: string[] }>()
 db.set('u1', { id: 'u1', name: 'Ada', tags: ['admin'] })
 
 const routes = [
-  impl(health, async () => ({ status: 200 as const, body: 'ok' as const })),
+  healthRoute,
   impl(getUser, async ({ params }) => {
     // extractor-style input is fully typed:
     expectTypeOf(params).toEqualTypeOf<{ id: string }>()
@@ -196,7 +199,103 @@ describe('contract types', () => {
   })
 
   it('input only exposes what the contract declares', () => {
-    expectTypeOf<HandlerInput<typeof health>>().toEqualTypeOf<{}>()
+    expectTypeOf<HandlerInput<typeof health>>().toEqualTypeOf<{ ctx: Ctx }>()
     expectTypeOf<HandlerInput<typeof getUser>['params']>().toEqualTypeOf<{ id: string }>()
+  })
+})
+
+describe('middleware', () => {
+  const user = defineContext<{ userId: string }>('user')
+
+  const auth = middleware(async ({ req, ctx, next }) => {
+    const token = req.headers.get('authorization')
+    if (!token) throw new HttpError(401, 'unauthorized')
+    ctx.set(user, { userId: `u-${token}` })
+    return next()
+  })
+
+  const tracer = middleware(async ({ next }) => {
+    const res = await next()
+    return new Response(res.body, { status: res.status, headers: { 'x-traced': 'yes' } })
+  })
+
+  const whoami = contract({
+    method: 'GET',
+    path: '/whoami',
+    responses: {
+      200: t.Object({ userId: t.String() }),
+      401: t.Object({ error: t.String() }),
+    },
+  })
+
+  it('runs onion-style in registration order', async () => {
+    const order: string[] = []
+    const a = middleware(async ({ next }) => {
+      order.push('a-pre')
+      const res = await next()
+      order.push('a-post')
+      return res
+    })
+    const b = middleware(async ({ next }) => {
+      order.push('b-pre')
+      const res = await next()
+      order.push('b-post')
+      return res
+    })
+
+    const app = createApp([healthRoute], { middleware: [a, b] })
+    await app.fetch(new Request('http://x/health'))
+
+    expect(order).toEqual(['a-pre', 'b-pre', 'b-post', 'a-post'])
+  })
+
+  it('short-circuits before the handler when auth fails', async () => {
+    let handlerRan = false
+    const route = impl(whoami, async ({ ctx }) => {
+      handlerRan = true
+      return { status: 200, body: ctx.require(user) }
+    })
+
+    const app = createApp([route], { middleware: [auth] })
+    const res = await app.fetch(new Request('http://x/whoami'))
+
+    expect(res.status).toBe(401)
+    expect(await res.json()).toEqual({ error: 'unauthorized', details: undefined })
+    expect(handlerRan).toBe(false)
+  })
+
+  it('shares typed context from middleware to handler', async () => {
+    const route = impl(whoami, async ({ ctx }) => ({
+      status: 200,
+      body: { userId: ctx.require(user).userId },
+    }))
+
+    const app = createApp([route], { middleware: [tracer, auth] })
+    const res = await app.fetch(
+      new Request('http://x/whoami', { headers: { authorization: 'secret' } }),
+    )
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ userId: 'u-secret' })
+    expect(res.headers.get('x-traced')).toBe('yes')
+  })
+
+  it('require() on missing context is a 500', async () => {
+    const noAuth = impl(whoami, async ({ ctx }) => ({ status: 200, body: ctx.require(user) }))
+    const app = createApp([noAuth])
+    const res = await app.fetch(new Request('http://x/whoami'))
+
+    expect(res.status).toBe(500)
+  })
+
+  it('rejects double next()', async () => {
+    const double = middleware(async ({ next }) => {
+      await next()
+      return next()
+    })
+    const app = createApp([healthRoute], { middleware: [double] })
+    const res = await app.fetch(new Request('http://x/health'))
+
+    expect(res.status).toBe(500)
   })
 })

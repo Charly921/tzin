@@ -111,8 +111,8 @@ Comandos: `npm test`, `npm run typecheck`, benchmarks: `npx tsc -p bench/tsconfi
 - [x] Nombre elegido: **tzin** (disponible en npm, verificado 404 en registry). Package renombrado a `tzin@0.1.0`.
 - [ ] Antes de publicar: decidir licencia (README dice "MIT (pending)"), revisar si SESSION.md debe salir del repo público, crear repo remoto en GitHub.
 
-### B. Runtime real — PENDIENTE (siguiente fase)
-- [ ] Middleware estilo Axum/Tower (composición de capas tipadas sobre el handler).
+### B. Runtime real — EN CURSO
+- [x] Middleware onion-style (`compose`) + contexto tipado por request (`defineContext`/`Ctx` con `get`/`require`/`set`). `HandlerInput` ahora incluye `ctx`; el cliente usa `SectionsOf<C>` (sin ctx). Tests: orden cebolla, corto-circuito 401, compartir contexto tipado, require faltante→500, doble next()→500. 17 tests.
 - [ ] Adaptadores: Node pulido, Bun, Cloudflare Workers (el runtime Web Standards ya lo facilita).
 - [ ] Streaming/SSE básico.
 

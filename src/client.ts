@@ -1,4 +1,4 @@
-import type { AnyContract, HandlerInput, ResponseOf } from './contract.js'
+import type { AnyContract, ResponseOf, SectionsOf } from './contract.js'
 
 export interface CallerResult<C extends AnyContract> {
   status: number
@@ -6,7 +6,7 @@ export interface CallerResult<C extends AnyContract> {
 }
 
 export type CallerFn<C extends AnyContract> = (
-  input: HandlerInput<C> & { fetchInit?: RequestInit },
+  input: SectionsOf<C> & { fetchInit?: RequestInit },
 ) => Promise<CallerResult<C>>
 
 /** Flat mapped type over a record of contracts: O(routes), no nesting. */

@@ -117,7 +117,7 @@ documented blow-ups compound further when `zValidator` inference enters the chai
 ## Roadmap
 
 - [x] Spike: contracts, router, server, typed client, OpenAPI generation
-- [ ] Middleware composition (Axum/Tower-style typed layers)
+- [x] Middleware composition (onion-style) with typed per-request context
 - [ ] Adapters: Node (done, minimal), Bun, Cloudflare Workers
 - [ ] Streaming/SSE
 - [ ] Optional light DI layer

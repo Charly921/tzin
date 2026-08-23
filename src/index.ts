@@ -7,6 +7,7 @@ export {
   type AnyContract,
   type PathParamNames,
   type HandlerInput,
+  type SectionsOf,
   type ResponseOf,
   type Handler,
   type RouteImpl,
@@ -17,3 +18,5 @@ export { client, type ClientOf, type CallerFn, type CallerResult } from './clien
 export { generateOpenApi } from './openapi.js'
 export { listen } from './node.js'
 export { t, Value } from './schema.js'
+export { defineContext, Ctx, type ContextKey } from './context.js'
+export { middleware, compose, type MiddlewareInput, type Middleware, type Next, type Dispatch } from './middleware.js'

@@ -1,4 +1,5 @@
 import type { Static, TSchema } from './schema.js'
+import type { Ctx } from './context.js'
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS'
 
@@ -38,14 +39,17 @@ export type PathParamNames<P extends string> =
       : never
 
 /**
- * Extractor-style handler input: only the sections the contract declares.
- * Destructure what you need, Axum-style guards become typed properties.
+ * The request sections a contract declares. Shared by server input and
+ * client call args so both sides stay in sync.
  */
-export type HandlerInput<C extends AnyContract> = {} & ('params' extends keyof C
+export type SectionsOf<C extends AnyContract> = ('params' extends keyof C
   ? { params: StaticOf<C['params']> }
   : {}) &
   ('query' extends keyof C ? { query: StaticOf<C['query']> } : {}) &
   ('body' extends keyof C ? { body: StaticOf<C['body']> } : {})
+
+/** Extractor-style handler input: declared sections + per-request context. */
+export type HandlerInput<C extends AnyContract> = { ctx: Ctx } & SectionsOf<C>
 
 /** Discriminated union of every declared success response. */
 export type ResponseOf<C extends AnyContract> = {
