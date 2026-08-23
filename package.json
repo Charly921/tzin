@@ -1,0 +1,23 @@
+{
+  "name": "tzin",
+  "version": "0.1.0",
+  "description": "Contract-first TypeScript framework. Types that scale.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "typecheck:ours": "tsc -p bench/tsconfig.ours.json --noEmit --extendedDiagnostics",
+    "typecheck:hono": "tsc -p bench/tsconfig.hono.json --noEmit --extendedDiagnostics"
+  },
+  "dependencies": {
+    "@sinclair/typebox": "^0.34.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "hono": "^4.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
