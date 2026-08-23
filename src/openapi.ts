@@ -23,7 +23,9 @@ export function generateOpenApi(
   for (const { contract: c } of routes) {
     const oaPath = toOpenApiPath(c.path)
     const operation: Record<string, unknown> = {
-      operationId: `${c.method.toLowerCase()}_${oaPath.replace(/[^A-Za-z0-9]+/g, '_')}`,
+      operationId:
+        c.name ?? `${c.method.toLowerCase()}_${oaPath.replace(/[^A-Za-z0-9]+/g, '_')}`,
+      ...(c.description ? { description: c.description } : {}),
       responses: Object.fromEntries(
         Object.entries(c.responses).map(([status, schema]) => [
           status,

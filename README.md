@@ -105,6 +105,26 @@ A flat registry of plain objects has neither failure mode by construction.
 *Honest caveat: the Hono fixture returns constant JSON without validators; the
 documented blow-ups compound further when `zValidator` inference enters the chain.*
 
+## AI-native: every API is an MCP server
+
+tzin ships first-class [MCP](https://modelcontextprotocol.io) support — the same
+contracts that generate your OpenAPI document also expose your endpoints as tools
+for AI agents:
+
+```ts
+import { startStdioMcp } from 'tzin'
+
+const app = createApp(routes)
+startStdioMcp(app) // newline-delimited JSON-RPC on stdio
+```
+
+- `tools/list` returns each endpoint with a real JSON Schema `inputSchema` assembled
+  from its declared sections — **no conversion layer**, TypeBox already is JSON Schema.
+- `tools/call` dispatches **in-process** through the full app: validation, middleware
+  and DI all apply; HTTP errors surface as `isError` results.
+- Contract-level `name` and `description` become the tool's identity; OpenAPI reuses
+  them as `operationId`/`description`.
+
 ## Design principles
 
 - **Contract-first, flat registry.** A route is data (`contract({...})`), not a link
@@ -126,7 +146,7 @@ documented blow-ups compound further when `zValidator` inference enters the chai
 - [x] Streaming/SSE (`sse()` helper + `raw()` escape hatch)
 - [ ] Streaming/SSE
 - [x] Optional light DI layer (`provide()` → typed singleton seeds in request context)
-- [ ] AI-native toolchain (MCP server exposing contracts to agents)
+- [x] AI-native toolchain: built-in MCP server (`tools/list`, `tools/call`, stdio transport)
 
 ## Development
 

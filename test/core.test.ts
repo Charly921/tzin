@@ -1,6 +1,8 @@
 import { describe, expect, expectTypeOf, it, vi } from 'vitest'
 import { t } from '../src/schema.js'
 import { contract, impl, HttpError, createApp, generateOpenApi, listen, client, middleware, defineContext, provide } from '../src/index.js'
+import { handleMcpMessage, listTools } from '../src/mcp.js'
+import type { App } from '../src/index.js'
 import { sse } from '../src/sse.js'
 import type { Ctx } from '../src/index.js'
 import type { ResponseOf, HandlerInput, PathParamNames } from '../src/contract.js'
@@ -384,5 +386,132 @@ describe('dependency injection', () => {
     const res = await app.fetch(new Request('http://x/stats'))
 
     expect(await res.json()).toEqual({ n: 42 })
+  })
+})
+
+describe('MCP', () => {
+  const mcpUser = contract({
+    name: 'find_user',
+    description: 'Find a user by id',
+    method: 'GET',
+    path: '/mcp-users/:id',
+    params: t.Object({ id: t.String() }),
+    responses: {
+      200: t.Object({ id: t.String(), name: t.String() }),
+      404: t.Object({ error: t.String() }),
+    },
+  })
+
+  const mcpCreate = contract({
+    method: 'POST',
+    path: '/mcp-users',
+    body: t.Object({ name: t.String() }),
+    responses: { 201: t.Object({ ok: t.Boolean() }) },
+  })
+
+  function mcpApp(): App {
+    return createApp(
+      [
+        impl(mcpUser, async ({ params }) => ({
+          status: 200 as const,
+          body: { id: params.id, name: `user-${params.id}` },
+        })),
+        impl(mcpCreate, async () => ({ status: 201 as const, body: { ok: true } })),
+      ],
+      { middleware: [middleware(async ({ next }) => next())] },
+    )
+  }
+
+  it('initialize handshake', async () => {
+    const res = await handleMcpMessage(mcpApp(), {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'initialize',
+      params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'test' } },
+    })
+
+    expect(res?.result).toMatchObject({
+      protocolVersion: '2025-06-18',
+      serverInfo: { name: 'tzin' },
+      capabilities: { tools: {} },
+    })
+  })
+
+  it('tools/list exposes contracts as JSON Schema tools', async () => {
+    const res = await handleMcpMessage(mcpApp(), { jsonrpc: '2.0', id: 2, method: 'tools/list' })
+    const tools = (res?.result as { tools: Record<string, unknown>[] }).tools
+
+    expect(tools).toHaveLength(2)
+    expect(tools[0]).toMatchObject({
+      name: 'find_user',
+      description: 'Find a user by id',
+    })
+    expect(tools[0].inputSchema).toEqual({
+      type: 'object',
+      properties: { params: expect.objectContaining({ type: 'object' }) },
+      required: ['params'],
+    })
+    expect(tools[1].name).toBe('post_mcp_users')
+  })
+
+  it('tools/call dispatches in-process through the full app', async () => {
+    const res = await handleMcpMessage(mcpApp(), {
+      jsonrpc: '2.0',
+      id: 3,
+      method: 'tools/call',
+      params: { name: 'find_user', arguments: { params: { id: 'u9' } } },
+    })
+    const result = res?.result as { content: { text: string }[]; isError?: boolean }
+
+    expect(result.isError).toBeUndefined()
+    expect(JSON.parse(result.content[0].text)).toEqual({ id: 'u9', name: 'user-u9' })
+  })
+
+  it('tools/call surfaces HTTP errors as isError', async () => {
+    const missing = contract({
+      method: 'GET',
+      path: '/missing/:id',
+      params: t.Object({ id: t.String() }),
+      responses: {
+        200: t.Object({ id: t.String() }),
+        404: t.Object({ error: t.String() }),
+      },
+    })
+    const failing = createApp([
+      impl(missing, async ({ params }) => {
+        throw new HttpError(404, `no user ${params.id}`)
+      }),
+    ])
+    const [tool] = listTools(failing.routes) as { name: string }[]
+
+    const res = await handleMcpMessage(failing, {
+      jsonrpc: '2.0',
+      id: 4,
+      method: 'tools/call',
+      params: { name: tool.name, arguments: { params: { id: 'x' } } },
+    })
+    const result = res?.result as { isError?: boolean; content: { text: string }[] }
+
+    expect(result.isError).toBe(true)
+    expect(result.content[0].text).toContain('HTTP 404')
+  })
+
+  it('unknown tool and unknown method are protocol errors', async () => {
+    const badTool = await handleMcpMessage(mcpApp(), {
+      jsonrpc: '2.0',
+      id: 5,
+      method: 'tools/call',
+      params: { name: 'nope', arguments: {} },
+    })
+    expect((badTool?.result as { isError?: boolean }).isError).toBe(true)
+
+    const badMethod = await handleMcpMessage(mcpApp(), {
+      jsonrpc: '2.0',
+      id: 6,
+      method: 'wat/unknown',
+    })
+    expect((badMethod?.error as { code: number }).code).toBe(-32601)
+
+    expect(await handleMcpMessage(mcpApp(), { method: 'notifications/initialized' })).toBeNull()
   })
 })

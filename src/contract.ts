@@ -10,6 +10,10 @@ export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 
 export interface ContractDef {
   method: HttpMethod
   path: string
+  /** Stable identifier reused by OpenAPI operationId and MCP tool name. */
+  name?: string
+  /** Human/agent-readable summary, surfaced in OpenAPI and MCP. */
+  description?: string
   params?: TSchema
   query?: TSchema
   body?: TSchema

@@ -22,6 +22,13 @@ export { defineContext, Ctx, type ContextKey } from './context.js'
 export { middleware, compose, type MiddlewareInput, type Middleware, type Next, type Dispatch } from './middleware.js'
 export { raw, isRawResult, type RawResult } from './contract.js'
 export { provide, type ProvidedEntry } from './provide.js'
+export {
+  handleMcpMessage,
+  listTools,
+  toTool,
+  type RpcRequest,
+} from './mcp.js'
+export { startStdioMcp } from './mcp_stdio.js'
 export { sse, type SseSender } from './sse.js'
 export { serve as serveBun } from './bun.js'
 export { toWorker } from './workers.js'

@@ -118,7 +118,8 @@ Comandos: `npm test`, `npm run typecheck`, benchmarks: `npx tsc -p bench/tsconfi
 
 ### C. Roadmap estratégico (de la investigación) — EN CURSO
 - [x] DI ligera: `provide(key, value)` a nivel app siembra singletons en el Ctx de cada request; handlers leen con `ctx.require(key)` tipado. Middleware puede sobreescribir (request scope gana). 20 tests.
-- [ ] Toolchain AI-native: MCP server que exponga contratos a agentes + `llms.txt`.
+- [x] Toolchain AI-native: `src/mcp.ts` (initialize/tools/list/tools/call sobre JSON-RPC) + `src/mcp_stdio.ts` (transporte stdio NDJSON). Cada contrato = tool MCP con inputSchema JSON Schema directo de TypeBox; tools/call despacha in-process vía app.fetch (validación+middleware+DI aplican); errores HTTP → isError. Contratos aceptan `name`/`description` (reutilizados por OpenAPI como operationId/description). 25 tests.
+- [ ] Pendientes MCP siguientes: recursos (resources/list), HTTP/SSE transport además de stdio, tests con cliente MCP real.
 - [ ] Segundo acto: realtime/presence nativo (Channels + Presence estilo Phoenix).
 
 ---
