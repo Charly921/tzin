@@ -50,6 +50,36 @@ export function listTools(routes: RouteImpl<any>[]): Record<string, unknown>[] {
   return routes.map(toTool)
 }
 
+function sectionProperties(schema: unknown): string[] {
+  const props = (schema as { properties?: Record<string, unknown> }).properties
+  return props ? Object.keys(props) : []
+}
+
+/**
+ * Tool arguments arrive nested ({params:{id}}) or flattened at the top level
+ * ({id}) — the common MCP client convention. Resolve either shape against the
+ * section's declared property names.
+ */
+function resolveSection(
+  args: Record<string, unknown>,
+  section: string,
+  schema: unknown,
+): Record<string, unknown> | undefined {
+  const nested = args[section]
+  if (nested !== undefined) {
+    return typeof nested === 'object' && nested !== null ? (nested as Record<string, unknown>) : undefined
+  }
+  const flat: Record<string, unknown> = {}
+  let found = false
+  for (const key of sectionProperties(schema)) {
+    if (key in args) {
+      flat[key] = args[key]
+      found = true
+    }
+  }
+  return found ? flat : undefined
+}
+
 async function callTool(app: App, name: string, args: unknown): Promise<Record<string, unknown>> {
   const routes: RouteImpl<any>[] = app.routes
   const route = routes.find((r) => (r.contract.name ?? defaultToolName(r.contract)) === name)
@@ -61,20 +91,39 @@ async function callTool(app: App, name: string, args: unknown): Promise<Record<s
     }
   }
 
-  const a = (args ?? {}) as { params?: Record<string, string>; query?: Record<string, string>; body?: unknown }
-  let path = route.contract.path.replace(/:([A-Za-z0-9_]+)/g, (_m: string, key: string) =>
-    encodeURIComponent(String(a.params?.[key] ?? `{${key}}`)),
-  )
-  const qs = a.query ? new URLSearchParams(Object.entries(a.query).map(([k, v]) => [k, String(v)])).toString() : ''
-  if (qs) path += `?${qs}`
+  const c = route.contract
+  const rawArgs = (args ?? {}) as Record<string, unknown>
+  const paramsSchema = 'params' in c ? c.params : undefined
+  const querySchema = 'query' in c ? c.query : undefined
+  const bodySchema = 'body' in c ? c.body : undefined
 
-  const init: RequestInit = { method: route.contract.method }
-  if ('body' in route.contract && route.contract.body && a.body !== undefined) {
-    init.body = JSON.stringify(a.body)
+  const params = paramsSchema ? resolveSection(rawArgs, 'params', paramsSchema) : undefined
+  const requiredParams = [...c.path.matchAll(/:([A-Za-z0-9_]+)/g)].map((m) => m[1])
+  const missing = requiredParams.filter((k) => params?.[k] === undefined)
+  if (missing.length) {
+    return {
+      content: [
+        { type: 'text', text: `Missing argument(s): ${missing.map((k) => `params.${k}`).join(', ')}` },
+      ],
+      isError: true,
+    }
   }
+  const path = c.path.replace(/:([A-Za-z0-9_]+)/g, (_m: string, key: string) =>
+    encodeURIComponent(String(params![key])),
+  )
+
+  const query = querySchema ? resolveSection(rawArgs, 'query', querySchema) : undefined
+  const qs = query
+    ? new URLSearchParams(Object.entries(query).map(([k, v]) => [k, String(v)])).toString()
+    : ''
+  const fullPath = qs ? `${path}?${qs}` : path
+
+  const body = bodySchema ? resolveSection(rawArgs, 'body', bodySchema) : undefined
+  const init: RequestInit = { method: c.method }
+  if (body !== undefined) init.body = JSON.stringify(body)
 
   // In-process dispatch: validation, middleware and DI all apply.
-  const res = await app.fetch(new Request(`http://mcp.local${path}`, init))
+  const res = await app.fetch(new Request(`http://mcp.local${fullPath}`, init))
   const text = await res.text()
 
   if (!res.ok) {

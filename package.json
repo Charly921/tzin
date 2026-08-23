@@ -8,7 +8,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "typecheck:ours": "tsc -p bench/tsconfig.ours.json --noEmit --extendedDiagnostics",
-    "typecheck:hono": "tsc -p bench/tsconfig.hono.json --noEmit --extendedDiagnostics"
+    "typecheck:hono": "tsc -p bench/tsconfig.hono.json --noEmit --extendedDiagnostics",
+    "probe:mcp": "node scripts/mcp-client.mjs"
   },
   "dependencies": {
     "@sinclair/typebox": "^0.34.0"

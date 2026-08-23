@@ -117,6 +117,12 @@ Comandos: `npm test`, `npm run typecheck`, benchmarks: `npx tsc -p bench/tsconfi
 8. **`sse()` cierra el stream cuando el productor termina**: para streams infinitos (canales), el productor debe esperar el abort (`await new Promise(resolve => signal.addEventListener('abort', ...))`).
 9. vitest `toHaveBeenCalledTimes` exige un spy (`vi.fn()`), no funciones planas.
 10. Slugs de nombres de tools: normalizar con `/[^A-Za-z0-9]+/g → '_'` (runs consecutivos colapsan a un solo `_`).
+11. **Los clientes MCP envían argumentos planos** (`{id:'1'}`), no anidados por sección (`{params:{id:'1'}}`). `callTool` acepta ambas formas resolviendo contra las propiedades declaradas de cada sección; params faltantes → error claro (`Missing argument(s): params.id`) en vez de placeholder silencioso.
+
+### Validación externa — ✅ MCP verificado con clientes reales (23 ago 2026)
+- Probe propio (`npm run probe:mcp`, `scripts/mcp-client.mjs`): 9/9 checks — handshake, discovery, JSON Schema real, dispatch in-process, query, 404→isError, args planos, missing param, unknown tool.
+- **Inspector oficial** (`npx @modelcontextprotocol/inspector --cli`): tools/list ✓, tools/call con path params planos ✓, query plana ✓, 404→isError ✓.
+- Demo ejecutable: `examples/mcp-demo.ts` (`npx tsx examples/mcp-demo.ts`).
 
 ---
 
@@ -130,7 +136,7 @@ Comandos: `npm test`, `npm run typecheck`, benchmarks: `npx tsc -p bench/tsconfi
 ### Pendientes para la próxima sesión (orden sugerido)
 
 **Validación externa (alta prioridad)**
-1. Probar el MCP server con un cliente real: `npx @modelcontextprotocol/inspector` o Claude Desktop, apuntando a un entryfile con `startStdioMcp(app)`.
+1. ~~Probar el MCP server con un cliente real~~ ✅ HECHO (ver sección "Validación externa").
 2. Verificar `serveBun()` instalando Bun (`curl -fsSL https://bun.sh/install | bash`).
 3. Publicar repo en GitHub + decidir licencia (README dice "MIT pending") + revisar si SESSION.md sale del repo público.
 
