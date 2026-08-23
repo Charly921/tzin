@@ -105,17 +105,18 @@ Comandos: `npm test`, `npm run typecheck`, benchmarks: `npx tsc -p bench/tsconfi
 
 ## 6. Pendientes para la próxima sesión
 
-### A. Empaquetar el spike como repo público (manifiesto)
-- [ ] `git init` + primer commit limpio (excluir bench fixtures generados o dejar N=100).
-- [ ] README con: tesis, tabla de benchmarks, hallazgos cualitativos (patrón encadenado = una sola expresión), ejemplo mínimo.
-- [ ] Renombrar paquete (elegir nombre real del framework, hoy `@contractfw/spike`).
+### A. Empaquetar el spike como repo público (manifiesto) — ✅ HECHO
+- [x] `git init` + primer commit (`01639cc`, rama main).
+- [x] README en inglés con: tesis, tabla de benchmarks, hallazgos cualitativos, ejemplo mínimo.
+- [x] Nombre elegido: **tzin** (disponible en npm, verificado 404 en registry). Package renombrado a `tzin@0.1.0`.
+- [ ] Antes de publicar: decidir licencia (README dice "MIT (pending)"), revisar si SESSION.md debe salir del repo público, crear repo remoto en GitHub.
 
-### B. Runtime real
+### B. Runtime real — PENDIENTE (siguiente fase)
 - [ ] Middleware estilo Axum/Tower (composición de capas tipadas sobre el handler).
 - [ ] Adaptadores: Node pulido, Bun, Cloudflare Workers (el runtime Web Standards ya lo facilita).
 - [ ] Streaming/SSE básico.
 
-### C. Roadmap estratégico (de la investigación)
+### C. Roadmap estratégico (de la investigación) — PENDIENTE
 - [ ] Arquitectura/DI ligera opcional (hueco #4121).
 - [ ] Toolchain AI-native: MCP server que exponga contratos a agentes + `llms.txt`.
 - [ ] Segundo acto: realtime/presence nativo (Channels + Presence estilo Phoenix).
