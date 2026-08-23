@@ -1,6 +1,7 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import { t } from '../src/schema.js'
 import { contract, impl, HttpError, createApp, generateOpenApi, listen, client, middleware, defineContext } from '../src/index.js'
+import { sse } from '../src/sse.js'
 import type { Ctx } from '../src/index.js'
 import type { ResponseOf, HandlerInput, PathParamNames } from '../src/contract.js'
 
@@ -297,5 +298,41 @@ describe('middleware', () => {
     const res = await app.fetch(new Request('http://x/health'))
 
     expect(res.status).toBe(500)
+  })
+})
+
+describe('streaming', () => {
+  const events = contract({
+    method: 'GET',
+    path: '/events',
+    responses: { 200: t.Object({ ok: t.Boolean() }) },
+  })
+
+  it('streams server-sent events through a raw response', async () => {
+    const route = impl(events, async () =>
+      sse(async (send) => {
+        send.event('ping', { n: 1 })
+        send.comment('keep-alive')
+        send.event('done', { ok: true })
+      }),
+    )
+    const app = createApp([route])
+    const res = await app.fetch(new Request('http://x/events'))
+
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-type')).toBe('text/event-stream')
+
+    const reader = res.body!.getReader()
+    const decoder = new TextDecoder()
+    let text = ''
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      text += decoder.decode(value)
+    }
+
+    expect(text).toContain('event: ping\ndata: {"n":1}\n\n')
+    expect(text).toContain(': keep-alive\n\n')
+    expect(text).toContain('event: done\ndata: {"ok":true}\n\n')
   })
 })

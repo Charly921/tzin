@@ -113,8 +113,8 @@ Comandos: `npm test`, `npm run typecheck`, benchmarks: `npx tsc -p bench/tsconfi
 
 ### B. Runtime real — EN CURSO
 - [x] Middleware onion-style (`compose`) + contexto tipado por request (`defineContext`/`Ctx` con `get`/`require`/`set`). `HandlerInput` ahora incluye `ctx`; el cliente usa `SectionsOf<C>` (sin ctx). Tests: orden cebolla, corto-circuito 401, compartir contexto tipado, require faltante→500, doble next()→500. 17 tests.
-- [ ] Adaptadores: Node pulido, Bun, Cloudflare Workers (el runtime Web Standards ya lo facilita).
-- [ ] Streaming/SSE básico.
+- [x] Adaptadores: `toWorker()` para Cloudflare Workers; `serveBun()` escrito según API documentada (**sin verificar** — no hay bun en el entorno). Node existente.
+- [x] Streaming: `sse(producer)` → RawResult con ReadableStream (`event`/`comment`), y escape hatch general `raw(response)` en la unión de retorno del handler. Test e2e de eventos vía app.fetch. 18 tests.
 
 ### C. Roadmap estratégico (de la investigación) — PENDIENTE
 - [ ] Arquitectura/DI ligera opcional (hueco #4121).

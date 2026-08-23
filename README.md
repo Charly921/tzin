@@ -118,7 +118,8 @@ documented blow-ups compound further when `zValidator` inference enters the chai
 
 - [x] Spike: contracts, router, server, typed client, OpenAPI generation
 - [x] Middleware composition (onion-style) with typed per-request context
-- [ ] Adapters: Node (done, minimal), Bun, Cloudflare Workers
+- [ ] Adapters: Node (done, minimal), Workers (done), Bun (written against documented API, unverified)
+- [x] Streaming/SSE (`sse()` helper + `raw()` escape hatch)
 - [ ] Streaming/SSE
 - [ ] Optional light DI layer
 - [ ] AI-native toolchain (MCP server exposing contracts to agents)

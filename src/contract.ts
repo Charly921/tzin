@@ -61,7 +61,22 @@ export type ResponseOf<C extends AnyContract> = {
 
 export type Handler<C extends AnyContract> = (
   input: HandlerInput<C>,
-) => ResponseOf<C> | Promise<ResponseOf<C>>
+) => ResponseOf<C> | RawResult | Promise<ResponseOf<C> | RawResult>
+
+/** Escape hatch: return a pre-built Response (streaming, files, proxies...). */
+export interface RawResult {
+  readonly __tzin_raw: Response
+}
+
+const RAW_MARKER = '__tzin_raw'
+
+export function raw(res: Response): RawResult {
+  return { [RAW_MARKER]: res }
+}
+
+export function isRawResult(v: unknown): v is RawResult {
+  return typeof v === 'object' && v !== null && RAW_MARKER in v
+}
 
 export interface RouteImpl<C extends AnyContract = AnyContract> {
   contract: C

@@ -1,5 +1,5 @@
 import { Value } from './schema.js'
-import { HttpError, type RouteImpl } from './contract.js'
+import { HttpError, isRawResult, type RouteImpl } from './contract.js'
 import { matchPath } from './router.js'
 import { Ctx } from './context.js'
 import { compose, type Middleware } from './middleware.js'
@@ -63,6 +63,7 @@ export function createApp(routes: RouteImpl<any>[], options: AppOptions = {}): A
       }
 
       const result = await route.handler(input as never)
+      if (isRawResult(result)) return result.__tzin_raw
       return Response.json(result.body, { status: result.status })
     }
 
@@ -73,7 +74,7 @@ export function createApp(routes: RouteImpl<any>[], options: AppOptions = {}): A
 
   async function fetch(req: Request): Promise<Response> {
     try {
-      return await handle(req, new Ctx())
+      return await handle(req, new Ctx(req.signal))
     } catch (err) {
       if (err instanceof HttpError) {
         return Response.json({ error: err.message, details: err.details }, { status: err.status })
