@@ -10,11 +10,11 @@ export interface SseSender {
   comment(text: string): void
 }
 
-export function sse(produce: (send: SseSender) => Promise<void>): RawResult {
+export function sse(produce: (send: SseSender) => Promise<void>, signal?: AbortSignal): RawResult {
   const encoder = new TextEncoder()
 
   const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
+    start(controller) {
       let closed = false
       const write = (chunk: string): void => {
         if (!closed) controller.enqueue(encoder.encode(chunk))
@@ -24,12 +24,24 @@ export function sse(produce: (send: SseSender) => Promise<void>): RawResult {
           write(`event: ${name}\ndata: ${JSON.stringify(data)}\n\n`),
         comment: (text) => write(`: ${text}\n\n`),
       }
-      try {
-        await produce(send)
-      } finally {
+      const close = (): void => {
+        if (closed) return
         closed = true
-        controller.close()
+        try {
+          controller.close()
+        } catch {}
       }
+      if (signal) {
+        if (signal.aborted) {
+          close()
+          return
+        }
+        signal.addEventListener('abort', close, { once: true })
+      }
+
+      produce(send)
+        .catch(() => {})
+        .finally(close)
     },
   })
 

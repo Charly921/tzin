@@ -2,6 +2,9 @@ import { describe, expect, expectTypeOf, it, vi } from 'vitest'
 import { t } from '../src/schema.js'
 import { contract, impl, HttpError, createApp, generateOpenApi, listen, client, middleware, defineContext, provide } from '../src/index.js'
 import { handleMcpMessage, listTools } from '../src/mcp.js'
+import { Hub } from '../src/hub.js'
+import { Presence } from '../src/presence.js'
+import { channelRoutes } from '../src/channels.js'
 import type { App } from '../src/index.js'
 import { sse } from '../src/sse.js'
 import type { Ctx } from '../src/index.js'
@@ -513,5 +516,113 @@ describe('MCP', () => {
     expect((badMethod?.error as { code: number }).code).toBe(-32601)
 
     expect(await handleMcpMessage(mcpApp(), { method: 'notifications/initialized' })).toBeNull()
+  })
+})
+
+describe('realtime channels', () => {
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+  async function readEvents(res: Response, maxMs = 500): Promise<{ event: string; data: unknown }[]> {
+    const reader = res.body!.getReader()
+    const decoder = new TextDecoder()
+    let buf = ''
+    const events: { event: string; data: unknown }[] = []
+    const deadline = Date.now() + maxMs
+    while (Date.now() < deadline) {
+      const chunk = await Promise.race<ReadableStreamReadResult<Uint8Array> | undefined>([
+        reader.read(),
+        sleep(maxMs).then(() => undefined),
+      ])
+      if (!chunk || chunk.done) break
+      buf += decoder.decode(chunk.value)
+      for (const frame of buf.split('\n\n')) {
+        const ev = /^event: (.+)$/m.exec(frame)
+        const da = /^data: (.+)$/m.exec(frame)
+        if (ev) events.push({ event: ev[1], data: da ? JSON.parse(da[1]) : null })
+      }
+      buf = buf.endsWith('\n\n') ? '' : (buf.split('\n\n').pop() ?? '')
+    }
+    reader.cancel().catch(() => {})
+    return events
+  }
+
+  it('publish reaches SSE subscribers; abort cleans up', async () => {
+    const hub = new Hub()
+    const app = createApp(channelRoutes(hub))
+    const ac = new AbortController()
+
+    const sub = app.fetch(
+      new Request('http://x/channels/room1?member=alice', { signal: ac.signal }),
+    )
+    await sleep(10)
+
+    const pub = await app.fetch(
+      new Request('http://x/channels/room1', {
+        method: 'POST',
+        body: JSON.stringify({ event: 'chat', data: { text: 'hola' } }),
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
+    expect(await pub.json()).toEqual({ delivered: 1 })
+
+    const events = await Promise.all([readEvents(await sub), sleep(60)]).then(([e]) => e)
+    expect(events).toContainEqual({ event: 'chat', data: { text: 'hola' } })
+
+    expect(hub.subscriberCount('room1')).toBe(1)
+    ac.abort()
+    await sleep(5)
+    expect(hub.subscriberCount('room1')).toBe(0)
+  })
+
+  it('presence tracks join/leave and broadcasts state + diffs', async () => {
+    const hub = new Hub()
+    const presence = new Presence(hub, 1000)
+    presence.startSweeping(50)
+    const app = createApp(channelRoutes(hub, { presence }))
+    const ac = new AbortController()
+
+    const seen: string[] = []
+    hub.subscribe('room2', (e) => seen.push(e.event))
+
+    const sub = app.fetch(
+      new Request('http://x/channels/room2?member=alice', { signal: ac.signal }),
+    )
+    await sleep(20)
+    await app.fetch(
+      new Request('http://x/channels/room2/heartbeat', {
+        method: 'POST',
+        body: JSON.stringify({ member: 'bob', meta: { device: 'phone' } }),
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
+
+    const snap = presence.snapshot('room2').map((m) => m.member).sort()
+    expect(snap).toEqual(['alice', 'bob'])
+
+    ac.abort()
+    await sleep(10)
+    expect(presence.snapshot('room2').map((m) => m.member)).toEqual(['bob'])
+    expect(seen).toContain('presence_state')
+    expect(seen).toContain('presence_diff')
+
+    presence.stopSweeping()
+    void sub
+  })
+
+  it('TTL sweep removes ghost members with a diff', async () => {
+    const hub = new Hub()
+    const presence = new Presence(hub, 30)
+    presence.startSweeping(10)
+    const diffs: unknown[] = []
+    hub.subscribe('ghosts', (e) => {
+      if (e.event === 'presence_diff') diffs.push(e.data)
+    })
+
+    presence.join('ghosts', 'casper')
+    expect(presence.snapshot('ghosts')).toHaveLength(1)
+    await sleep(80)
+    expect(presence.snapshot('ghosts')).toHaveLength(0)
+    expect(diffs).toContainEqual({ leaves: ['casper'] })
+    presence.stopSweeping()
   })
 })

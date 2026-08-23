@@ -29,6 +29,9 @@ export {
   type RpcRequest,
 } from './mcp.js'
 export { startStdioMcp } from './mcp_stdio.js'
+export { Hub, type ChannelEvent, type Subscriber } from './hub.js'
+export { Presence, type MemberInfo } from './presence.js'
+export { channelRoutes, type ChannelOptions } from './channels.js'
 export { sse, type SseSender } from './sse.js'
 export { serve as serveBun } from './bun.js'
 export { toWorker } from './workers.js'

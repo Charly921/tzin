@@ -125,6 +125,28 @@ startStdioMcp(app) // newline-delimited JSON-RPC on stdio
 - Contract-level `name` and `description` become the tool's identity; OpenAPI reuses
   them as `operationId`/`description`.
 
+## Realtime channels with presence
+
+Phoenix-style channels, mounted as ordinary routes — SSE down, POST up, so it
+runs on every runtime including Workers:
+
+```ts
+import { Hub, Presence, channelRoutes } from 'tzin'
+
+const hub = new Hub()
+const presence = new Presence(hub, 30_000)
+
+const app = createApp(channelRoutes(hub, { presence }))
+// GET  /channels/:topic?member=alice   → SSE stream; presence joins
+// POST /channels/:topic                → { event, data } broadcast
+// POST /channels/:topic/heartbeat      → keep member listed (TTL-refreshed)
+// POST /channels/:topic/leave          → presence_diff broadcast
+```
+
+Members that stop heartbeating are swept and announced via `presence_diff` —
+ghost clients disappear even after crashes. The in-memory `Hub` is one process;
+multi-node deployments swap in a Redis/Durable-Object-backed hub.
+
 ## Design principles
 
 - **Contract-first, flat registry.** A route is data (`contract({...})`), not a link
@@ -144,6 +166,7 @@ startStdioMcp(app) // newline-delimited JSON-RPC on stdio
 - [x] Middleware composition (onion-style) with typed per-request context
 - [ ] Adapters: Node (done, minimal), Workers (done), Bun (written against documented API, unverified)
 - [x] Streaming/SSE (`sse()` helper + `raw()` escape hatch)
+- [x] Realtime: Hub (pub/sub), Presence (TTL + diffs), mountable channel routes
 - [ ] Streaming/SSE
 - [x] Optional light DI layer (`provide()` → typed singleton seeds in request context)
 - [x] AI-native toolchain: built-in MCP server (`tools/list`, `tools/call`, stdio transport)
