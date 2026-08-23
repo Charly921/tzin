@@ -1,7 +1,7 @@
 # Estado del proyecto — Framework contract-first en TypeScript
 
 > Documento de sesión guardada. Retomar desde aquí en una nueva sesión.
-> Última actualización: 22 de agosto de 2026.
+> Última actualización: 23 de agosto de 2026. Roadmap del spike COMPLETO.
 
 ---
 
@@ -46,28 +46,41 @@ Crear un framework web backend **open-source en TypeScript** diferenciado por hu
 
 ```
 /home/carlos/Documentos/projects/framework
-├── package.json              # @contractfw/spike — deps instaladas
+├── package.json              # tzin@0.1.0 (private)
+├── README.md                 # manifiesto en inglés: tesis, benchmarks, ejemplos
+├── SESSION.md                # este documento
 ├── tsconfig.json             # ES2022, NodeNext, strict
 ├── scripts/
 │   └── gen-fixtures.mjs      # generador de fixtures de escala (node scripts/gen-fixtures.mjs <N>)
 ├── src/
 │   ├── index.ts              # exports públicos
-│   ├── contract.ts           # NÚCLEO: contract(), HandlerInput, ResponseOf, RouteImpl, impl(), HttpError
+│   ├── contract.ts           # NÚCLEO: contract(), SectionsOf/HandlerInput, ResponseOf, impl(), HttpError, raw()
 │   ├── router.ts             # compilePath (con cache) + matchPath
 │   ├── schema.ts             # re-export TypeBox + registro de formats (email, uuid, date-time...)
-│   ├── server.ts             # createApp(routes): App con fetch(req); validación Value.Check
+│   ├── server.ts             # createApp(routes, { middleware?, provides? }): validación + DI seed + raw passthrough
 │   ├── client.ts             # client() Proxy + CallerFn/ClientOf/CallerResult
-│   ├── openapi.ts            # generateOpenApi() → OpenAPI 3.1 (:id → {id})
-│   └── node.ts               # listen(app, port) adaptador Node mínimo (node:http)
+│   ├── openapi.ts            # generateOpenApi() → OpenAPI 3.1 (:id → {id}, usa name/description)
+│   ├── node.ts               # listen(app, port) adaptador Node (node:http)
+│   ├── bun.ts                # serveBun() — API documentada, SIN verificar en runtime
+│   ├── workers.ts            # toWorker() para Cloudflare Workers
+│   ├── context.ts            # defineContext<T>() + Ctx (get/require/set, signal, seed)
+│   ├── middleware.ts         # compose() onion + tipo Middleware
+│   ├── provide.ts            # provide(key, value) con check de marca tipada
+│   ├── sse.ts                # sse(producer, signal?) → RawResult; cierra en finish o abort
+│   ├── mcp.ts                # handleMcpMessage/listTools/toTool (JSON-RPC MCP)
+│   ├── mcp_stdio.ts          # startStdioMcp() transporte NDJSON por stdio
+│   ├── hub.ts                # Hub pub/sub en memoria
+│   ├── presence.ts           # Presence TTL estilo Phoenix (state/diff/sweep)
+│   └── channels.ts           # channelRoutes(hub, { presence }) montables
 ├── test/
-│   └── core.test.ts          # 12 tests: runtime + e2e cliente + asserts expectTypeOf
+│   └── core.test.ts          # 28 tests: núcleo + middleware + DI + SSE + MCP + realtime
 └── bench/
     ├── tsconfig.ours.json
     ├── tsconfig.hono.json
     └── src/{ours,hono}.fixture.ts   # auto-generados (regenerables con gen-fixtures.mjs)
 ```
 
-**Estado: 12/12 tests verdes · `tsc --noEmit` limpio.**
+**Estado: 28/28 tests verdes · `tsc --noEmit` limpio · 7 commits en main.**
 
 Comandos: `npm test`, `npm run typecheck`, benchmarks: `npx tsc -p bench/tsconfig.{ours,hono}.json --extendedDiagnostics`.
 
@@ -100,31 +113,41 @@ Comandos: `npm test`, `npm run typecheck`, benchmarks: `npx tsc -p bench/tsconfi
 4. TypeBox 0.34 **exige registrar formats** antes de validar ("Unknown format 'email'") → hecho en `schema.ts`.
 5. Varianza: arrays heterogéneos de `RouteImpl<C>` requieren firma `RouteImpl<any>[]` en `createApp`/`generateOpenApi`.
 6. vitest `toEqualTypeOf` es quisquitoso con uniones + props opcionales/unknown → estrechar la unión con `'error' in data` antes de asertar.
+7. **`HandlerInput` solo expone secciones DECLARADAS**: un contrato con `:topic` en el path pero sin `params:` declarado NO recibe params (ni en runtime ni en tipos) — el server solo valida/puebla lo que el contrato anuncia.
+8. **`sse()` cierra el stream cuando el productor termina**: para streams infinitos (canales), el productor debe esperar el abort (`await new Promise(resolve => signal.addEventListener('abort', ...))`).
+9. vitest `toHaveBeenCalledTimes` exige un spy (`vi.fn()`), no funciones planas.
+10. Slugs de nombres de tools: normalizar con `/[^A-Za-z0-9]+/g → '_'` (runs consecutivos colapsan a un solo `_`).
 
 ---
 
-## 6. Pendientes para la próxima sesión
+## 6. Estado del roadmap y próximos pasos
 
-### A. Empaquetar el spike como repo público (manifiesto) — ✅ HECHO
-- [x] `git init` + primer commit (`01639cc`, rama main).
-- [x] README en inglés con: tesis, tabla de benchmarks, hallazgos cualitativos, ejemplo mínimo.
-- [x] Nombre elegido: **tzin** (disponible en npm, verificado 404 en registry). Package renombrado a `tzin@0.1.0`.
-- [ ] Antes de publicar: decidir licencia (README dice "MIT (pending)"), revisar si SESSION.md debe salir del repo público, crear repo remoto en GitHub.
+### Roadmap del spike — ✅ COMPLETO (ver secciones anteriores)
+- [x] A. Empaquetado: nombre **tzin**, README-manifiesto, git.
+- [x] B. Runtime: middleware onion + contexto tipado, adaptadores Node/Workers/Bun, SSE + raw().
+- [x] C. Estratégico: DI ligera, MCP server (stdio), realtime channels + presence.
 
-### B. Runtime real — EN CURSO
-- [x] Middleware onion-style (`compose`) + contexto tipado por request (`defineContext`/`Ctx` con `get`/`require`/`set`). `HandlerInput` ahora incluye `ctx`; el cliente usa `SectionsOf<C>` (sin ctx). Tests: orden cebolla, corto-circuito 401, compartir contexto tipado, require faltante→500, doble next()→500. 17 tests.
-- [x] Adaptadores: `toWorker()` para Cloudflare Workers; `serveBun()` escrito según API documentada (**sin verificar** — no hay bun en el entorno). Node existente.
-- [x] Streaming: `sse(producer)` → RawResult con ReadableStream (`event`/`comment`), y escape hatch general `raw(response)` en la unión de retorno del handler. Test e2e de eventos vía app.fetch. 18 tests.
+### Pendientes para la próxima sesión (orden sugerido)
 
-### C. Roadmap estratégico (de la investigación) — EN CURSO
-- [x] DI ligera: `provide(key, value)` a nivel app siembra singletons en el Ctx de cada request; handlers leen con `ctx.require(key)` tipado. Middleware puede sobreescribir (request scope gana). 20 tests.
-- [x] Toolchain AI-native: `src/mcp.ts` (initialize/tools/list/tools/call sobre JSON-RPC) + `src/mcp_stdio.ts` (transporte stdio NDJSON). Cada contrato = tool MCP con inputSchema JSON Schema directo de TypeBox; tools/call despacha in-process vía app.fetch (validación+middleware+DI aplican); errores HTTP → isError. Contratos aceptan `name`/`description` (reutilizados por OpenAPI como operationId/description). 25 tests.
-- [ ] Pendientes MCP siguientes: recursos (resources/list), HTTP/SSE transport además de stdio, tests con cliente MCP real.
-- [x] Segundo acto (v1): `Hub` pub/sub en memoria + `Presence` estilo Phoenix (TTL sweep → `presence_diff`, joins → `presence_state`) + `channelRoutes(hub, { presence })` montables como rutas normales (SSE down / POST up, funciona hasta en Workers). `sse()` ahora acepta AbortSignal y cierra stream en desconexión. 28 tests.
-  - Pendientes realtime: Hub multi-nodo (Redis/Durable Objects), transporte WebSocket nativo por runtime, cliente JS oficial.
+**Validación externa (alta prioridad)**
+1. Probar el MCP server con un cliente real: `npx @modelcontextprotocol/inspector` o Claude Desktop, apuntando a un entryfile con `startStdioMcp(app)`.
+2. Verificar `serveBun()` instalando Bun (`curl -fsSL https://bun.sh/install | bash`).
+3. Publicar repo en GitHub + decidir licencia (README dice "MIT pending") + revisar si SESSION.md sale del repo público.
+
+**Producto**
+4. Transport HTTP/SSE para MCP además de stdio; `resources/list`.
+5. WebSocket nativo por runtime (Node ws / Bun / Durable Objects) como alternativa a SSE+POST.
+6. Hub multi-nodo: interfaz de adapter (Redis pub/sub, Cloudflare Durable Objects).
+7. Cliente JS oficial para channels (`tzin/client-browser`: EventSource + heartbeat automático).
+
+**Calidad antes de npm publish**
+8. Cobertura de edge cases del router (rutas duplicadas, params colisionantes, 405 vs 404).
+9. Benchmarks de runtime (req/s) además de los de tipos.
+10. CI (GitHub Actions): test + typecheck + bench en cada push.
 
 ---
 
 ## 7. Entorno
-- Node v24.15.0, npm 11.12.1 (**no hay pnpm**).
-- Proyecto: `/home/carlos/Documentos/projects/framework` (aún sin git).
+- Node v24.15.0, npm 11.12.1 (**no hay pnpm**; tampoco bun instalado).
+- Proyecto: `/home/carlos/Documentos/projects/framework` — repo git, rama main, 7 commits.
+- Commits: `01639cc` inicial → `2f9e7b3` docs → `9ac7b26` middleware → `ec1f2e4` SSE/adaptadores → `f479be3` DI → `66c09c2` MCP → `004d2e9` realtime.
