@@ -18,6 +18,7 @@
     "probe:mcp": "node scripts/mcp-client.mjs",
     "bench:lookup": "tsx bench/lookup.bench.mjs",
     "bench:http": "tsx bench/http.bench.mjs",
+    "bench:pipeline": "tsx bench/pipeline.bench.mjs",
     "dev": "tsx src/cli.ts"
   },
   "dependencies": {

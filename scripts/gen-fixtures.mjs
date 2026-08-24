@@ -33,7 +33,7 @@ for (let i = 0; i < N; i++) {
   const name = `${kinds[i % 5]}_${resources[Math.floor(i / 5)]}_${i}`
   const hasId = i % 5 !== 0 && i % 5 !== 2
   const hasBody = i % 5 === 2 || i % 5 === 3
-  const path = hasId ? `/${resources[Math.floor(i / 5)]}/{id}` : `/${resources[Math.floor(i / 5)]}`
+  const path = hasId ? `/${resources[Math.floor(i / 5)]}/:id` : `/${resources[Math.floor(i / 5)]}`
 
   contracts += `
 export const ${name} = contract({

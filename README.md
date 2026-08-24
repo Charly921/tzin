@@ -117,12 +117,23 @@ each framework in its own process):
 | express | ~15–17k | 7ms |
 | tzin | ~14–16k | 7–9ms |
 
+The honest decomposition (`npm run bench:pipeline`, in-process `app.fetch` with
+identical request construction):
+
+| Metric | tzin | hono |
+|---|---|---|
+| in-process dispatch | ~127k req/s | ~118k req/s |
+
+Framework-side, tzin matches hono (routing is a radix trie at 9.1M lookups/s,
+full TypeBox validation costs ≈0.05µs/request). The over-network gap lives
+entirely in the Node adapter: constructing an undici `Request` per connection
+costs ~13µs under load, so the built-in `listen()` duck-types requests instead,
+and closing the rest is tracked adapter work — the framework core is not the
+bottleneck.
+
 Routing itself is a radix trie built at app creation: **9.1M lookups/s with 100
 routes** (~31× a regex linear scan, and flat regardless of route count —
-`npm run bench:lookup`). Full TypeBox validation of every declared section costs
-≈0.05µs per request. The remaining gap to hono is request-pipeline overhead, not
-routing or validation; tzin deliberately spends cycles on validation and typed
-error mapping that bare routers don't do.
+`npm run bench:lookup`).
 
 ## AI-native: every API is an MCP server
 

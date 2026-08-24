@@ -13,7 +13,7 @@ export const list_res0_0 = contract({
 
 export const get_res0_1 = contract({
   method: 'GET',
-  path: '/res0/{id}',
+  path: '/res0/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field1: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -31,7 +31,7 @@ export const create_res0_2 = contract({
 
 export const update_res0_3 = contract({
   method: 'PUT',
-  path: '/res0/{id}',
+  path: '/res0/:id',
   params: t.Object({ id: t.String() }),
   body: t.Object({ id: t.String(), name: t.String(), field3: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }),
   responses: {
@@ -41,7 +41,7 @@ export const update_res0_3 = contract({
 
 export const remove_res0_4 = contract({
   method: 'DELETE',
-  path: '/res0/{id}',
+  path: '/res0/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field4: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -58,7 +58,7 @@ export const list_res1_5 = contract({
 
 export const get_res1_6 = contract({
   method: 'GET',
-  path: '/res1/{id}',
+  path: '/res1/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field6: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -76,7 +76,7 @@ export const create_res1_7 = contract({
 
 export const update_res1_8 = contract({
   method: 'PUT',
-  path: '/res1/{id}',
+  path: '/res1/:id',
   params: t.Object({ id: t.String() }),
   body: t.Object({ id: t.String(), name: t.String(), field8: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }),
   responses: {
@@ -86,7 +86,7 @@ export const update_res1_8 = contract({
 
 export const remove_res1_9 = contract({
   method: 'DELETE',
-  path: '/res1/{id}',
+  path: '/res1/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field9: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -103,7 +103,7 @@ export const list_res2_10 = contract({
 
 export const get_res2_11 = contract({
   method: 'GET',
-  path: '/res2/{id}',
+  path: '/res2/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field11: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -121,7 +121,7 @@ export const create_res2_12 = contract({
 
 export const update_res2_13 = contract({
   method: 'PUT',
-  path: '/res2/{id}',
+  path: '/res2/:id',
   params: t.Object({ id: t.String() }),
   body: t.Object({ id: t.String(), name: t.String(), field13: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }),
   responses: {
@@ -131,7 +131,7 @@ export const update_res2_13 = contract({
 
 export const remove_res2_14 = contract({
   method: 'DELETE',
-  path: '/res2/{id}',
+  path: '/res2/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field14: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -148,7 +148,7 @@ export const list_res3_15 = contract({
 
 export const get_res3_16 = contract({
   method: 'GET',
-  path: '/res3/{id}',
+  path: '/res3/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field16: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -166,7 +166,7 @@ export const create_res3_17 = contract({
 
 export const update_res3_18 = contract({
   method: 'PUT',
-  path: '/res3/{id}',
+  path: '/res3/:id',
   params: t.Object({ id: t.String() }),
   body: t.Object({ id: t.String(), name: t.String(), field18: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }),
   responses: {
@@ -176,7 +176,7 @@ export const update_res3_18 = contract({
 
 export const remove_res3_19 = contract({
   method: 'DELETE',
-  path: '/res3/{id}',
+  path: '/res3/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field19: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -193,7 +193,7 @@ export const list_res4_20 = contract({
 
 export const get_res4_21 = contract({
   method: 'GET',
-  path: '/res4/{id}',
+  path: '/res4/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field21: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -211,7 +211,7 @@ export const create_res4_22 = contract({
 
 export const update_res4_23 = contract({
   method: 'PUT',
-  path: '/res4/{id}',
+  path: '/res4/:id',
   params: t.Object({ id: t.String() }),
   body: t.Object({ id: t.String(), name: t.String(), field23: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }),
   responses: {
@@ -221,7 +221,7 @@ export const update_res4_23 = contract({
 
 export const remove_res4_24 = contract({
   method: 'DELETE',
-  path: '/res4/{id}',
+  path: '/res4/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field24: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -238,7 +238,7 @@ export const list_res5_25 = contract({
 
 export const get_res5_26 = contract({
   method: 'GET',
-  path: '/res5/{id}',
+  path: '/res5/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field26: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -256,7 +256,7 @@ export const create_res5_27 = contract({
 
 export const update_res5_28 = contract({
   method: 'PUT',
-  path: '/res5/{id}',
+  path: '/res5/:id',
   params: t.Object({ id: t.String() }),
   body: t.Object({ id: t.String(), name: t.String(), field28: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }),
   responses: {
@@ -266,7 +266,7 @@ export const update_res5_28 = contract({
 
 export const remove_res5_29 = contract({
   method: 'DELETE',
-  path: '/res5/{id}',
+  path: '/res5/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field29: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -283,7 +283,7 @@ export const list_res6_30 = contract({
 
 export const get_res6_31 = contract({
   method: 'GET',
-  path: '/res6/{id}',
+  path: '/res6/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field31: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -301,7 +301,7 @@ export const create_res6_32 = contract({
 
 export const update_res6_33 = contract({
   method: 'PUT',
-  path: '/res6/{id}',
+  path: '/res6/:id',
   params: t.Object({ id: t.String() }),
   body: t.Object({ id: t.String(), name: t.String(), field33: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }),
   responses: {
@@ -311,7 +311,7 @@ export const update_res6_33 = contract({
 
 export const remove_res6_34 = contract({
   method: 'DELETE',
-  path: '/res6/{id}',
+  path: '/res6/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field34: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -328,7 +328,7 @@ export const list_res7_35 = contract({
 
 export const get_res7_36 = contract({
   method: 'GET',
-  path: '/res7/{id}',
+  path: '/res7/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field36: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -346,7 +346,7 @@ export const create_res7_37 = contract({
 
 export const update_res7_38 = contract({
   method: 'PUT',
-  path: '/res7/{id}',
+  path: '/res7/:id',
   params: t.Object({ id: t.String() }),
   body: t.Object({ id: t.String(), name: t.String(), field38: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }),
   responses: {
@@ -356,7 +356,7 @@ export const update_res7_38 = contract({
 
 export const remove_res7_39 = contract({
   method: 'DELETE',
-  path: '/res7/{id}',
+  path: '/res7/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field39: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -373,7 +373,7 @@ export const list_res8_40 = contract({
 
 export const get_res8_41 = contract({
   method: 'GET',
-  path: '/res8/{id}',
+  path: '/res8/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field41: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -391,7 +391,7 @@ export const create_res8_42 = contract({
 
 export const update_res8_43 = contract({
   method: 'PUT',
-  path: '/res8/{id}',
+  path: '/res8/:id',
   params: t.Object({ id: t.String() }),
   body: t.Object({ id: t.String(), name: t.String(), field43: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }),
   responses: {
@@ -401,7 +401,7 @@ export const update_res8_43 = contract({
 
 export const remove_res8_44 = contract({
   method: 'DELETE',
-  path: '/res8/{id}',
+  path: '/res8/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field44: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -418,7 +418,7 @@ export const list_res9_45 = contract({
 
 export const get_res9_46 = contract({
   method: 'GET',
-  path: '/res9/{id}',
+  path: '/res9/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field46: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -436,7 +436,7 @@ export const create_res9_47 = contract({
 
 export const update_res9_48 = contract({
   method: 'PUT',
-  path: '/res9/{id}',
+  path: '/res9/:id',
   params: t.Object({ id: t.String() }),
   body: t.Object({ id: t.String(), name: t.String(), field48: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }),
   responses: {
@@ -446,7 +446,7 @@ export const update_res9_48 = contract({
 
 export const remove_res9_49 = contract({
   method: 'DELETE',
-  path: '/res9/{id}',
+  path: '/res9/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field49: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -463,7 +463,7 @@ export const list_res10_50 = contract({
 
 export const get_res10_51 = contract({
   method: 'GET',
-  path: '/res10/{id}',
+  path: '/res10/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field51: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -481,7 +481,7 @@ export const create_res10_52 = contract({
 
 export const update_res10_53 = contract({
   method: 'PUT',
-  path: '/res10/{id}',
+  path: '/res10/:id',
   params: t.Object({ id: t.String() }),
   body: t.Object({ id: t.String(), name: t.String(), field53: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }),
   responses: {
@@ -491,7 +491,7 @@ export const update_res10_53 = contract({
 
 export const remove_res10_54 = contract({
   method: 'DELETE',
-  path: '/res10/{id}',
+  path: '/res10/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field54: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -508,7 +508,7 @@ export const list_res11_55 = contract({
 
 export const get_res11_56 = contract({
   method: 'GET',
-  path: '/res11/{id}',
+  path: '/res11/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field56: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -526,7 +526,7 @@ export const create_res11_57 = contract({
 
 export const update_res11_58 = contract({
   method: 'PUT',
-  path: '/res11/{id}',
+  path: '/res11/:id',
   params: t.Object({ id: t.String() }),
   body: t.Object({ id: t.String(), name: t.String(), field58: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }),
   responses: {
@@ -536,7 +536,7 @@ export const update_res11_58 = contract({
 
 export const remove_res11_59 = contract({
   method: 'DELETE',
-  path: '/res11/{id}',
+  path: '/res11/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field59: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -553,7 +553,7 @@ export const list_res12_60 = contract({
 
 export const get_res12_61 = contract({
   method: 'GET',
-  path: '/res12/{id}',
+  path: '/res12/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field61: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -571,7 +571,7 @@ export const create_res12_62 = contract({
 
 export const update_res12_63 = contract({
   method: 'PUT',
-  path: '/res12/{id}',
+  path: '/res12/:id',
   params: t.Object({ id: t.String() }),
   body: t.Object({ id: t.String(), name: t.String(), field63: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }),
   responses: {
@@ -581,7 +581,7 @@ export const update_res12_63 = contract({
 
 export const remove_res12_64 = contract({
   method: 'DELETE',
-  path: '/res12/{id}',
+  path: '/res12/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field64: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -598,7 +598,7 @@ export const list_res13_65 = contract({
 
 export const get_res13_66 = contract({
   method: 'GET',
-  path: '/res13/{id}',
+  path: '/res13/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field66: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -616,7 +616,7 @@ export const create_res13_67 = contract({
 
 export const update_res13_68 = contract({
   method: 'PUT',
-  path: '/res13/{id}',
+  path: '/res13/:id',
   params: t.Object({ id: t.String() }),
   body: t.Object({ id: t.String(), name: t.String(), field68: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }),
   responses: {
@@ -626,7 +626,7 @@ export const update_res13_68 = contract({
 
 export const remove_res13_69 = contract({
   method: 'DELETE',
-  path: '/res13/{id}',
+  path: '/res13/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field69: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -643,7 +643,7 @@ export const list_res14_70 = contract({
 
 export const get_res14_71 = contract({
   method: 'GET',
-  path: '/res14/{id}',
+  path: '/res14/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field71: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -661,7 +661,7 @@ export const create_res14_72 = contract({
 
 export const update_res14_73 = contract({
   method: 'PUT',
-  path: '/res14/{id}',
+  path: '/res14/:id',
   params: t.Object({ id: t.String() }),
   body: t.Object({ id: t.String(), name: t.String(), field73: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }),
   responses: {
@@ -671,7 +671,7 @@ export const update_res14_73 = contract({
 
 export const remove_res14_74 = contract({
   method: 'DELETE',
-  path: '/res14/{id}',
+  path: '/res14/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field74: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -688,7 +688,7 @@ export const list_res15_75 = contract({
 
 export const get_res15_76 = contract({
   method: 'GET',
-  path: '/res15/{id}',
+  path: '/res15/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field76: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -706,7 +706,7 @@ export const create_res15_77 = contract({
 
 export const update_res15_78 = contract({
   method: 'PUT',
-  path: '/res15/{id}',
+  path: '/res15/:id',
   params: t.Object({ id: t.String() }),
   body: t.Object({ id: t.String(), name: t.String(), field78: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }),
   responses: {
@@ -716,7 +716,7 @@ export const update_res15_78 = contract({
 
 export const remove_res15_79 = contract({
   method: 'DELETE',
-  path: '/res15/{id}',
+  path: '/res15/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field79: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -733,7 +733,7 @@ export const list_res16_80 = contract({
 
 export const get_res16_81 = contract({
   method: 'GET',
-  path: '/res16/{id}',
+  path: '/res16/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field81: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -751,7 +751,7 @@ export const create_res16_82 = contract({
 
 export const update_res16_83 = contract({
   method: 'PUT',
-  path: '/res16/{id}',
+  path: '/res16/:id',
   params: t.Object({ id: t.String() }),
   body: t.Object({ id: t.String(), name: t.String(), field83: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }),
   responses: {
@@ -761,7 +761,7 @@ export const update_res16_83 = contract({
 
 export const remove_res16_84 = contract({
   method: 'DELETE',
-  path: '/res16/{id}',
+  path: '/res16/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field84: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -778,7 +778,7 @@ export const list_res17_85 = contract({
 
 export const get_res17_86 = contract({
   method: 'GET',
-  path: '/res17/{id}',
+  path: '/res17/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field86: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -796,7 +796,7 @@ export const create_res17_87 = contract({
 
 export const update_res17_88 = contract({
   method: 'PUT',
-  path: '/res17/{id}',
+  path: '/res17/:id',
   params: t.Object({ id: t.String() }),
   body: t.Object({ id: t.String(), name: t.String(), field88: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }),
   responses: {
@@ -806,7 +806,7 @@ export const update_res17_88 = contract({
 
 export const remove_res17_89 = contract({
   method: 'DELETE',
-  path: '/res17/{id}',
+  path: '/res17/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field89: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -823,7 +823,7 @@ export const list_res18_90 = contract({
 
 export const get_res18_91 = contract({
   method: 'GET',
-  path: '/res18/{id}',
+  path: '/res18/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field91: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -841,7 +841,7 @@ export const create_res18_92 = contract({
 
 export const update_res18_93 = contract({
   method: 'PUT',
-  path: '/res18/{id}',
+  path: '/res18/:id',
   params: t.Object({ id: t.String() }),
   body: t.Object({ id: t.String(), name: t.String(), field93: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }),
   responses: {
@@ -851,7 +851,7 @@ export const update_res18_93 = contract({
 
 export const remove_res18_94 = contract({
   method: 'DELETE',
-  path: '/res18/{id}',
+  path: '/res18/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field94: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -868,7 +868,7 @@ export const list_res19_95 = contract({
 
 export const get_res19_96 = contract({
   method: 'GET',
-  path: '/res19/{id}',
+  path: '/res19/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field96: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
@@ -886,7 +886,7 @@ export const create_res19_97 = contract({
 
 export const update_res19_98 = contract({
   method: 'PUT',
-  path: '/res19/{id}',
+  path: '/res19/:id',
   params: t.Object({ id: t.String() }),
   body: t.Object({ id: t.String(), name: t.String(), field98: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }),
   responses: {
@@ -896,7 +896,7 @@ export const update_res19_98 = contract({
 
 export const remove_res19_99 = contract({
   method: 'DELETE',
-  path: '/res19/{id}',
+  path: '/res19/:id',
   params: t.Object({ id: t.String() }),
   responses: {
     200: t.Object({ ok: t.Boolean(), item: t.Object({ id: t.String(), name: t.String(), field99: t.Optional(t.Number()), tags: t.Array(t.String()), meta: t.Object({ k: t.String(), v: t.Number() }) }), at: t.String() }),
