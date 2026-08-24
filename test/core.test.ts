@@ -1083,4 +1083,115 @@ describe('multi-node hubs over a bus', () => {
       serverB.close()
     }
   })
+
+  it('presence replicates: every node holds the full view', async () => {
+    const { LocalBus } = await import('../src/bus.js')
+    const bus = new LocalBus()
+    const presA = new Presence(new Hub({ bus }))
+    const hubB = new Hub({ bus })
+    const presB = new Presence(hubB)
+
+    presA.join('room', 'ada', { device: 'phone' })
+
+    // node B holds the replica without any local activity on that topic
+    const replica = presB.snapshot('room')
+    expect(replica.map((m) => m.member)).toEqual(['ada'])
+    expect(replica[0].meta).toEqual({ device: 'phone' })
+    expect(typeof replica[0].onlineAt).toBe('number')
+
+    // a join on B now broadcasts COMPLETE cluster state, not just B's locals
+    const seen = new Promise<{ members: { member: string }[] }>((resolve) => {
+      hubB.subscribe('room', (e) => {
+        if (e.event === 'presence_state') resolve(e.data as { members: { member: string }[] })
+      })
+    })
+    presB.join('room', 'bob')
+    const state = await seen
+    expect(state.members.map((m) => m.member).sort()).toEqual(['ada', 'bob'])
+  })
+
+  it('ghosts expire on surviving nodes when their origin node dies', async () => {
+    const { LocalBus } = await import('../src/bus.js')
+    const bus = new LocalBus()
+    const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
+
+    // node A tracks with a short TTL but "crashes": its sweeper never runs again
+    const presA = new Presence(new Hub({ bus }), 40)
+    const presB = new Presence(new Hub({ bus }), 30)
+    presB.startSweeping(10)
+
+    presA.join('room', 'casper')
+    expect(presB.snapshot('room')).toHaveLength(1)
+
+    await sleep(80)
+    // B stops seeing heartbeats -> its own sweep expires the replica
+    expect(presB.snapshot('room')).toHaveLength(0)
+    presB.stopSweeping()
+  })
+
+  it('e2e: subscribing on node B gets node A members in the initial presence_state', async () => {
+    const { LocalBus } = await import('../src/bus.js')
+    const bus = new LocalBus()
+    const hubA = new Hub({ bus })
+    const hubB = new Hub({ bus })
+    const presA = new Presence(hubA)
+    const presB = new Presence(hubB)
+
+    const appA = createApp(channelRoutes(hubA, { presence: presA }))
+    const appB = createApp(channelRoutes(hubB, { presence: presB }))
+    const serverA = await listen(appA, 0)
+    const serverB = await listen(appB, 0)
+    const parseFrame = (frame: string) => ({
+      event: /^event: (.+)$/m.exec(frame)?.[1] ?? '',
+      data: (() => {
+        try {
+          return JSON.parse(/^data: (.+)$/m.exec(frame)?.[1] ?? '')
+        } catch {
+          return null
+        }
+      })(),
+    })
+
+    try {
+      const portA = (serverA.address() as { port: number }).port
+      const portB = (serverB.address() as { port: number }).port
+
+      // ada joins through node A
+      await fetch(`http://127.0.0.1:${portA}/channels/lobby/heartbeat`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ member: 'ada', meta: { city: 'lima' } }),
+      })
+
+      // bob subscribes on node B: first event is the replicated cluster state
+      const res = await fetch(`http://127.0.0.1:${portB}/channels/lobby?member=bob`)
+      const reader = res.body!.getReader()
+      const decoder = new TextDecoder()
+      let buf = ''
+      while (!buf.includes('\n\n')) {
+        const chunk = await Promise.race([
+          reader.read(),
+          new Promise<undefined>((r) => setTimeout(() => r(undefined), 1000)),
+        ])
+        if (!chunk || chunk.done) break
+        buf += decoder.decode(chunk.value)
+      }
+      reader.cancel().catch(() => {})
+
+      const states = buf
+        .split('\n\n')
+        .map(parseFrame)
+        .filter((f) => f.event === 'presence_state')
+      // First state (bob's join broadcast) already contains ada — proof that
+      // her membership replicated from node A into node B's local view.
+      const first = states[0]?.data as { members: { member: string; meta?: unknown }[] }
+      expect(first.members.map((m) => m.member).sort()).toEqual(['ada', 'bob'])
+      expect(first.members.find((m) => m.member === 'ada')?.meta).toEqual({ city: 'lima' })
+    } finally {
+      serverA.closeAllConnections?.()
+      serverA.close()
+      serverB.closeAllConnections?.()
+      serverB.close()
+    }
+  })
 })

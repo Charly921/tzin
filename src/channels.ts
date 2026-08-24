@@ -70,6 +70,9 @@ export function channelRoutes(hub: Hub, options: ChannelOptions = {}): RouteImpl
         send.comment(`subscribed ${topic}`)
         const unsub = hub.subscribe(topic, (e) => send.event(e.event, e.data))
         if (member && presence) presence.join(topic, member)
+        // Initial full view (Phoenix parity): anonymous subscribers get the
+        // room state here; members just got their join broadcast above.
+        if (presence) send.event('presence_state', { members: presence.snapshot(topic) })
 
         const cleanup = (): void => {
           unsub()

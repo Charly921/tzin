@@ -199,8 +199,10 @@ const nodeB = new Hub({ bus })
 // ignored, so there is no echo. Bus subscriptions are per-topic and lazy.
 ```
 
-Presence tracking stays per-node (Phoenix-style replication is on the roadmap);
-everything else behaves as one deployment.
+Presence replicates Phoenix-style: every node merges remote join/leave/sweep
+frames into its local view, so `presence_state` snapshots are complete
+cluster-wide, subscribers get the full roster on connect, and ghosts left by a
+dead node are expired by any surviving node's TTL sweep.
 
 A zero-dependency client ships for browsers (and Node >= 22 with any
 EventSource polyfill) — auto-heartbeat, presence events and reconnection via
