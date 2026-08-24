@@ -184,7 +184,23 @@ const app = createApp(channelRoutes(hub, { presence }))
 
 Members that stop heartbeating are swept and announced via `presence_diff` —
 ghost clients disappear even after crashes. The in-memory `Hub` is one process;
-multi-node deployments swap in a Redis/Durable-Object-backed hub.
+multi-node deployments wire hubs together over a message bus:
+
+```ts
+import { Hub } from 'tzin'
+import { LocalBus } from 'tzin/bus'
+
+// Any PUBLISH/SUBSCRIBE transport maps onto this 2-method interface:
+const bus: MessageBus = redisPubSubAdapter // Redis, Postgres LISTEN/NOTIFY...
+
+const nodeA = new Hub({ bus })
+const nodeB = new Hub({ bus })
+// A publish on node A reaches subscribers of every node; own frames are
+// ignored, so there is no echo. Bus subscriptions are per-topic and lazy.
+```
+
+Presence tracking stays per-node (Phoenix-style replication is on the roadmap);
+everything else behaves as one deployment.
 
 A zero-dependency client ships for browsers (and Node >= 22 with any
 EventSource polyfill) — auto-heartbeat, presence events and reconnection via

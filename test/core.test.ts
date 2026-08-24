@@ -1003,3 +1003,60 @@ describe('native websockets', () => {
     server.close()
   })
 })
+
+describe('multi-node hubs over a bus', () => {
+  it('publish on node1 reaches subscribers on node2; echo is suppressed', async () => {
+    const { LocalBus, clusterHubs } = await import('../src/bus.js')
+    const bus = new LocalBus()
+    const [node1, node2] = clusterHubs(bus, 2)
+
+    const got = new Promise<unknown>((resolve) => {
+      node2.subscribe('room', (e) => resolve(e.data))
+    })
+    const delivered = node1.publish('room', 'chat', { text: 'cross-node' })
+    // node1 has no local subscribers; the frame still crossed the bus
+    expect(delivered).toBe(0)
+    await expect(got).resolves.toEqual({ text: 'cross-node' })
+
+    // own frames don't loop back
+    let echoes = 0
+    node1.subscribe('room', () => echoes++)
+    node1.publish('room', 'ping', null)
+    await new Promise((r) => setTimeout(r, 20))
+    expect(echoes).toBe(1) // local delivery only
+  })
+
+  it('end-to-end: client of node2 receives what a client of node1 publishes', async () => {
+    const { LocalBus } = await import('../src/bus.js')
+    const bus = new LocalBus()
+    const hubA = new Hub({ bus })
+    const hubB = new Hub({ bus })
+
+    const appA = createApp([...routes, ...channelRoutes(hubA)])
+    const appB = createApp([...routes, ...channelRoutes(hubB)])
+    const serverA = await listen(appA, 0)
+    const serverB = await listen(appB, 0)
+    try {
+      const portA = (serverA.address() as { port: number }).port
+      const portB = (serverB.address() as { port: number }).port
+
+      // Subscriber on node B.
+      const received = new Promise<unknown>((resolve) => {
+        hubB.subscribe('lobby', (e) => resolve(e.data))
+      })
+
+      const res = await fetch(`http://127.0.0.1:${portA}/channels/lobby`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ event: 'chat', data: { msg: 'from A to B' } }),
+      })
+      expect(res.status).toBe(200)
+      await expect(received).resolves.toEqual({ msg: 'from A to B' })
+    } finally {
+      serverA.closeAllConnections?.()
+      serverA.close()
+      serverB.closeAllConnections?.()
+      serverB.close()
+    }
+  })
+})
