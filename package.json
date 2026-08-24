@@ -17,7 +17,8 @@
     "typecheck:hono": "tsc -p bench/tsconfig.hono.json --noEmit --extendedDiagnostics",
     "probe:mcp": "node scripts/mcp-client.mjs",
     "bench:lookup": "tsx bench/lookup.bench.mjs",
-    "bench:http": "tsx bench/http.bench.mjs"
+    "bench:http": "tsx bench/http.bench.mjs",
+    "dev": "tsx src/cli.ts"
   },
   "dependencies": {
     "@sinclair/typebox": "^0.34.0"

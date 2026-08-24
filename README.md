@@ -197,6 +197,22 @@ npm test          # vitest — runtime + end-to-end client + type assertions
 npm run typecheck # strict tsc across src/test/bench fixtures
 ```
 
+### Dev server
+
+```sh
+npx tsx src/cli.ts dev examples/node-demo.ts --port 3000
+```
+
+Hot-reloading server (tsx watch) that prints your route table straight from the
+contracts on every reload:
+
+```
+tzin dev · 2 routes
+
+  GET     /users/:id        get_user   Look up a user by id
+  POST    /users            create_user
+```
+
 ## License
 
 MIT — see [LICENSE](./LICENSE).
