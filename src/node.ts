@@ -1,5 +1,6 @@
 import { createServer, type Server } from 'node:http'
 import type { App } from './server.js'
+import { fastResponseText } from './server.js'
 
 /**
  * Minimal Node adapter. Production version: streaming, WebSockets, graceful shutdown.
@@ -47,7 +48,7 @@ export function listen(app: App, port = 3000): Promise<Server> {
       } as unknown as Request
 
       const res = await app.fetch(req)
-      const text = await res.text()
+      const text = fastResponseText(res) ?? (await res.text())
       const headers: Record<string, string | string[]> = {}
       res.headers.forEach((value, key) => {
         headers[key] = key === 'set-cookie' ? res.headers.getSetCookie() : value

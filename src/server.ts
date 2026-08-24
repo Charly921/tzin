@@ -29,6 +29,28 @@ function validationError(section: string, schema: unknown, value: unknown): Http
   return new HttpError(400, `Invalid ${section}`, errors)
 }
 
+/**
+ * Responses tzin builds itself carry their serialized text alongside, so
+ * adapters can write them without draining the undici body stream — the
+ * single most expensive step of the over-network path (~7k req/s marginal).
+ * User-created responses (raw()) simply fall back to res.text().
+ */
+const FAST_TEXT = '__tzin_text'
+
+export function fastResponseText(res: Response): string | undefined {
+  return (res as unknown as Record<string, unknown>)[FAST_TEXT] as string | undefined
+}
+
+function jsonFast(body: unknown, status: number): Response {
+  const text = JSON.stringify(body)
+  const res = new Response(text, {
+    status,
+    headers: { 'content-type': 'application/json' },
+  })
+  ;(res as unknown as Record<string, unknown>)[FAST_TEXT] = text
+  return res
+}
+
 function check(section: string, schema: unknown, value: unknown): void {
   if (!Value.Check(schema as never, value)) throw validationError(section, schema, value)
 }
@@ -100,7 +122,7 @@ export function createApp(routes: RouteImpl<any>[], options: AppOptions = {}): A
 
     const result = await hit.route.handler(input as never)
     if (isRawResult(result)) return result.__tzin_raw
-    return Response.json(result.body, { status: result.status })
+    return jsonFast(result.body, result.status)
   }
 
   const middleware = options.middleware ?? []
@@ -123,32 +145,38 @@ export function createApp(routes: RouteImpl<any>[], options: AppOptions = {}): A
         try {
           msg = await req.json()
         } catch {
-          return Response.json(
+          return jsonFast(
             { jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } },
-            { status: 400 },
+            400,
           )
         }
         const reply = await handleMcpMessage(app, msg as never)
         if (!reply) return new Response(null, { status: 202 })
-        return Response.json(reply)
+        return jsonFast(reply, 200)
       }
       if (options.llms && pathname === '/llms.txt') {
-        return new Response(renderLlmsTxt(routes, options.meta), {
+        const text = renderLlmsTxt(routes, options.meta)
+        const res = new Response(text, {
           headers: { 'content-type': 'text/plain; charset=utf-8' },
         })
+        ;(res as unknown as Record<string, unknown>)[FAST_TEXT] = text
+        return res
       }
       if (options.llms && pathname === '/llms-full.txt') {
-        return new Response(renderLlmsFullTxt(routes, options.meta), {
+        const text = renderLlmsFullTxt(routes, options.meta)
+        const res = new Response(text, {
           headers: { 'content-type': 'text/plain; charset=utf-8' },
         })
+        ;(res as unknown as Record<string, unknown>)[FAST_TEXT] = text
+        return res
       }
       return await handle(req, new Ctx(req.signal, hasSeed ? seed : undefined))
     } catch (err) {
       if (err instanceof HttpError) {
-        return Response.json({ error: err.message, details: err.details }, { status: err.status })
+        return jsonFast({ error: err.message, details: err.details }, err.status)
       }
       console.error(err)
-      return Response.json({ error: 'Internal Server Error' }, { status: 500 })
+      return jsonFast({ error: 'Internal Server Error' }, 500)
     }
   }
 
