@@ -10,7 +10,37 @@
   },
   "private": true,
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./client-browser": {
+      "types": "./dist/client-browser.d.ts",
+      "default": "./dist/client-browser.js"
+    },
+    "./bus": {
+      "types": "./dist/bus.d.ts",
+      "default": "./dist/bus.js"
+    },
+    "./ws": {
+      "types": "./dist/ws.d.ts",
+      "default": "./dist/ws.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "npm run build && npm test",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "typecheck:ours": "tsc -p bench/tsconfig.ours.json --noEmit --extendedDiagnostics",

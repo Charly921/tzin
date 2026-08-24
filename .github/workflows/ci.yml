@@ -18,6 +18,8 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci
+      - name: Build (dist + declarations)
+        run: npm run build
       - name: Typecheck
         run: npx tsc --noEmit
       - name: Tests
