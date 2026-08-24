@@ -46,7 +46,8 @@ export const getUserRoute = impl(getUser, async ({ params }) => {
 From that single declaration:
 
 - **Handler input is extracted, not guessed**: `{ params }` exists because you declared
-  it; add `query` or `body` to the contract and they appear, fully typed.
+  it; add `query`, `body`, `headers` or `cookies` to the contract and they appear,
+  fully typed and validated per request (cookies are parsed from the header).
 - **The compiler enforces your responses**: returning a shape that doesn't match the
   declared `200` body is a type error. Thrown `HttpError`s map to their status.
 - **OpenAPI 3.1 is free**: contracts are JSON Schema (TypeBox), so

@@ -96,6 +96,30 @@ describe('routing & extractors', () => {
     expect(await res.json()).toEqual({ id: 'u1', name: 'Ada', tags: ['admin'] })
   })
 
+  it('headers and cookies sections extract and validate', async () => {
+    const whoami = contract({
+      method: 'GET',
+      path: '/whoami',
+      headers: t.Object({ 'x-api-key': t.String() }),
+      cookies: t.Object({ session: t.String() }),
+      responses: { 200: t.Object({ key: t.String(), session: t.String() }) },
+    })
+    const localApp = createApp([
+      impl(whoami, async ({ headers, cookies }) => ({
+        status: 200 as const,
+        body: { key: headers['x-api-key'], session: cookies.session },
+      })),
+    ])
+    const ok = await localApp.fetch(
+      new Request('http://x/whoami', { headers: { 'x-api-key': 'k1', cookie: 'session=s9; theme=dark' } }),
+    )
+    expect(ok.status).toBe(200)
+    expect(await ok.json()).toEqual({ key: 'k1', session: 's9' })
+
+    const missing = await localApp.fetch(new Request('http://x/whoami'))
+    expect(missing.status).toBe(400)
+  })
+
   it('query params flow through', async () => {
     const res = await jsonReq('/users?limit=1&q=u1')
     expect(res.status).toBe(200)
@@ -153,6 +177,22 @@ describe('openapi generation', () => {
     expect(doc.paths['/users'].post.requestBody).toBeTruthy()
     expect(doc.paths['/users/{id}'].get.parameters[0].name).toBe('id')
   })
+
+  it('documents header and cookie parameters with honest required flags', () => {
+    const whoami = contract({
+      method: 'GET',
+      path: '/whoami',
+      headers: t.Object({ 'x-api-key': t.String(), 'x-trace': t.Optional(t.String()) }),
+      cookies: t.Object({ session: t.String() }),
+      responses: { 200: t.Object({ ok: t.Boolean() }) },
+    })
+    const doc = generateOpenApi([impl(whoami, async () => ({ status: 200 as const, body: { ok: true } }))]) as any
+    const params = doc.paths['/whoami'].get.parameters
+    const byName = Object.fromEntries(params.map((p: any) => [p.name, p]))
+    expect(byName['x-api-key']).toMatchObject({ in: 'header', required: true })
+    expect(byName['x-trace']).toMatchObject({ in: 'header', required: false })
+    expect(byName.session).toMatchObject({ in: 'cookie', required: true })
+  })
 })
 
 describe('typed client end-to-end', () => {
@@ -183,6 +223,34 @@ describe('typed client end-to-end', () => {
       const list = await api.listUsers({ query: { limit: '1' } })
       expect(list.status).toBe(200)
       if (list.status === 200) expect(list.body).toHaveLength(1)
+    } finally {
+      server.closeAllConnections?.()
+      server.close()
+    }
+  })
+
+  it('client sends headers and cookies sections', async () => {
+    const whoami = contract({
+      method: 'GET',
+      path: '/whoami',
+      headers: t.Object({ 'x-api-key': t.String() }),
+      cookies: t.Object({ session: t.String() }),
+      responses: { 200: t.Object({ key: t.String(), session: t.String() }) },
+    })
+    const localApp = createApp([
+      impl(whoami, async ({ headers, cookies }) => ({
+        status: 200 as const,
+        body: { key: headers['x-api-key'], session: cookies.session },
+      })),
+    ])
+    const server = await listen(localApp, 0)
+    try {
+      const addr = server.address()
+      const port = typeof addr === 'object' && addr ? addr.port : 3000
+      const api = client({ whoami }, `http://127.0.0.1:${port}`)
+      const res = await api.whoami({ headers: { 'x-api-key': 'k1' }, cookies: { session: 's9' } })
+      expect(res.status).toBe(200)
+      if (res.status === 200) expect(res.body).toEqual({ key: 'k1', session: 's9' })
     } finally {
       server.closeAllConnections?.()
       server.close()

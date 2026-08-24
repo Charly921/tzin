@@ -50,7 +50,9 @@ export type SectionsOf<C extends AnyContract> = ('params' extends keyof C
   ? { params: StaticOf<C['params']> }
   : {}) &
   ('query' extends keyof C ? { query: StaticOf<C['query']> } : {}) &
-  ('body' extends keyof C ? { body: StaticOf<C['body']> } : {})
+  ('body' extends keyof C ? { body: StaticOf<C['body']> } : {}) &
+  ('headers' extends keyof C ? { headers: StaticOf<C['headers']> } : {}) &
+  ('cookies' extends keyof C ? { cookies: StaticOf<C['cookies']> } : {})
 
 /** Extractor-style handler input: declared sections + per-request context. */
 export type HandlerInput<C extends AnyContract> = { ctx: Ctx } & SectionsOf<C>

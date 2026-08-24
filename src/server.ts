@@ -61,6 +61,25 @@ export function createApp(routes: RouteImpl<any>[], options: AppOptions = {}): A
       input.query = rawQuery
     }
 
+    if ('headers' in c && c.headers) {
+      const raw: Record<string, string> = {}
+      req.headers.forEach((v, k) => {
+        raw[k] = v
+      })
+      check('headers', c.headers, raw)
+      input.headers = raw
+    }
+
+    if ('cookies' in c && c.cookies) {
+      const rawCookies: Record<string, string> = {}
+      for (const part of (req.headers.get('cookie') ?? '').split(';')) {
+        const i = part.indexOf('=')
+        if (i > 0) rawCookies[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim())
+      }
+      check('cookies', c.cookies, rawCookies)
+      input.cookies = rawCookies
+    }
+
     if ('body' in c && c.body) {
       let json: unknown
       try {

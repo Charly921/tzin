@@ -41,6 +41,13 @@ export function client<Routes extends Record<string, AnyContract>>(
         }
         const init: RequestInit = { method: c.method, ...input.fetchInit }
         if ('body' in c && c.body) init.body = JSON.stringify(input.body)
+        const headers: Record<string, string> = { ...input.headers }
+        if (input.cookies) {
+          headers.cookie = Object.entries(input.cookies as Record<string, unknown>)
+            .map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`)
+            .join('; ')
+        }
+        init.headers = { ...init.headers, ...headers }
         const res = await fetch(baseUrl + path, init)
         let body: unknown
         try {

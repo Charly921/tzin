@@ -55,6 +55,30 @@ export function generateOpenApi(
         parameters.push({ name, in: 'query', required: false, schema: schemaRefOrInline(schema) })
       }
     }
+    const isOptionalSchema = (schema: unknown) =>
+      (schema as Record<symbol, unknown>)[Symbol.for('TypeBox.Optional')] === 'Optional'
+    if ('headers' in c && c.headers) {
+      const shape = (c.headers as { properties?: Record<string, unknown> }).properties ?? {}
+      for (const [name, schema] of Object.entries(shape)) {
+        parameters.push({
+          name,
+          in: 'header',
+          required: !isOptionalSchema(schema),
+          schema: schemaRefOrInline(schema),
+        })
+      }
+    }
+    if ('cookies' in c && c.cookies) {
+      const shape = (c.cookies as { properties?: Record<string, unknown> }).properties ?? {}
+      for (const [name, schema] of Object.entries(shape)) {
+        parameters.push({
+          name,
+          in: 'cookie',
+          required: !isOptionalSchema(schema),
+          schema: schemaRefOrInline(schema),
+        })
+      }
+    }
     if (parameters.length) operation.parameters = parameters
 
     if ('body' in c && c.body) {
