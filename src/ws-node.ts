@@ -20,7 +20,7 @@ export function attachChannels(httpServer: Server, routes: WsRoute[]): void {
       return
     }
     const hit = matcher('GET', url.pathname)
-    if (!hit) {
+    if (!hit || !('route' in hit)) {
       socket.destroy()
       return
     }

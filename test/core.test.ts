@@ -722,7 +722,9 @@ describe('router trie', () => {  const r = (path: string, method = 'GET', tag = 
     expect((await app.fetch(new Request('http://x/things', { method: 'POST' }))).status).toBe(200)
     const del = await app.fetch(new Request('http://x/things/9', { method: 'DELETE' }))
     expect(await del.json()).toEqual({ route: 'remove' })
-    expect((await app.fetch(new Request('http://x/things/9'))).status).toBe(404)
+    const wrong = await app.fetch(new Request('http://x/things/9'))
+    expect(wrong.status).toBe(405)
+    expect(wrong.headers.get('allow')).toBe('DELETE')
   })
 
   it('nested params and first-registration tiebreak', async () => {
@@ -745,6 +747,28 @@ describe('router trie', () => {  const r = (path: string, method = 'GET', tag = 
     const app = createApp([r('/slashed', 'GET', 'yes')])
     expect((await app.fetch(new Request('http://x/slashed/'))).status).toBe(200)
     expect((await app.fetch(new Request('http://x/unmatched'))).status).toBe(404)
+  })
+
+  it('known path, unknown method -> 405 with Allow header; unknown path -> 404', async () => {
+    const app = createApp([r('/things', 'GET'), r('/things', 'POST')])
+    const res = await app.fetch(new Request('http://x/things', { method: 'DELETE' }))
+    expect(res.status).toBe(405)
+    expect(res.headers.get('allow')).toBe('GET, POST')
+    expect(await res.json()).toEqual({ error: 'Method Not Allowed', details: undefined })
+    expect((await app.fetch(new Request('http://x/nope'))).status).toBe(404)
+  })
+
+  it('prefix of another route is 404 even though the node exists', async () => {
+    const app = createApp([r('/users/:id/posts', 'GET')])
+    expect((await app.fetch(new Request('http://x/users/1'))).status).toBe(404)
+    expect((await app.fetch(new Request('http://x/users/1', { method: 'DELETE' }))).status).toBe(404)
+  })
+
+  it('HEAD and OPTIONS served when declared explicitly', async () => {
+    const app = createApp([r('/ping', 'HEAD'), r('/ping', 'OPTIONS')])
+    expect((await app.fetch(new Request('http://x/ping', { method: 'HEAD' }))).status).toBe(200)
+    expect((await app.fetch(new Request('http://x/ping', { method: 'OPTIONS' }))).status).toBe(200)
+    expect((await app.fetch(new Request('http://x/ping'))).status).toBe(405)
   })
 })
 

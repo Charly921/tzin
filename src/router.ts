@@ -3,6 +3,13 @@ export interface RouteMatch<T> {
   params: Record<string, string>
 }
 
+/** The path resolves to a registered endpoint but the method differs (405). */
+export interface MethodMismatch {
+  allow: string[]
+}
+
+export type LookupResult<T> = RouteMatch<T> | MethodMismatch | null
+
 interface Node<T> {
   static: Map<string, Node<T>>
   param?: { name: string; node: Node<T> }
@@ -28,8 +35,11 @@ export interface MatcherEntry<T> {
  * Radix-trie matcher built once at app creation: lookup cost is O(path depth),
  * independent of route count. Static segments win over dynamic ones; ties on
  * the same terminal node resolve by insertion order (first registration wins).
+ *
+ * A resolved terminal node with handlers but none for the requested method
+ * yields a MethodMismatch (405 + Allow); an unresolved path yields null (404).
  */
-export function createMatcher<T>(entries: MatcherEntry<T>[]): (method: string, pathname: string) => RouteMatch<T> | null {
+export function createMatcher<T>(entries: MatcherEntry<T>[]): (method: string, pathname: string) => LookupResult<T> {
   const root = emptyNode<T>()
   let order = 0
 
@@ -68,7 +78,8 @@ export function createMatcher<T>(entries: MatcherEntry<T>[]): (method: string, p
     }
 
     const hit = node.handlers.get(method)
-    if (!hit) return null
-    return { route: hit.route, params }
+    if (hit) return { route: hit.route, params }
+    if (node.handlers.size > 0) return { allow: [...node.handlers.keys()] }
+    return null
   }
 }

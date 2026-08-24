@@ -74,6 +74,9 @@ export function createApp(routes: RouteImpl<any>[], options: AppOptions = {}): A
     const pathname = pathnameOf(req.url)
     const hit = matchRoute(req.method, pathname)
     if (!hit) throw new HttpError(404, 'Not Found')
+    if (!('route' in hit)) {
+      throw new HttpError(405, 'Method Not Allowed', undefined, { Allow: hit.allow.join(', ') })
+    }
 
     const c = hit.route.contract
     const input: Record<string, unknown> = { ctx }
@@ -173,7 +176,9 @@ export function createApp(routes: RouteImpl<any>[], options: AppOptions = {}): A
       return await handle(req, new Ctx(req.signal, hasSeed ? seed : undefined))
     } catch (err) {
       if (err instanceof HttpError) {
-        return jsonFast({ error: err.message, details: err.details }, err.status)
+        const res = jsonFast({ error: err.message, details: err.details }, err.status)
+        if (err.headers) for (const [k, v] of Object.entries(err.headers)) res.headers.set(k, v)
+        return res
       }
       console.error(err)
       return jsonFast({ error: 'Internal Server Error' }, 500)

@@ -45,7 +45,7 @@ export function serve(app: App, port = 3000, options: { wsRoutes?: WsRoute[] } =
       if (matcher && req.headers.get('upgrade')?.toLowerCase() === 'websocket' && server) {
         const url = new URL(req.url)
         const hit = matcher('GET', url.pathname)
-        if (hit) {
+        if (hit && 'route' in hit) {
           const upgraded = server.upgrade(req, { data: { route: hit.route as WsRoute, url } })
           if (upgraded) return undefined
         }
