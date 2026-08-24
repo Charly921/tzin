@@ -199,6 +199,23 @@ chat.on('presence_diff', (d) => updateRoster(d))
 await chat.push('message', { text: 'hello' })
 ```
 
+### Native WebSockets
+
+Prefer WebSockets over SSE+POST? The same Hub and Presence power a WS route —
+one protocol implementation, thin per-runtime adapters:
+
+```ts
+import { wsChannels } from 'tzin/ws'
+import { attachChannels } from 'tzin/ws-node' // Node adapter (ws package)
+// Bun: serve(app, port, { wsRoutes: [wsChannels(hub, { presence })] })
+
+const server = await listen(createApp(routes), 3000)
+attachChannels(server, [wsChannels(hub, { presence })])
+// ws://host/channels/:topic?member=ada — frames: {type:'push'|'heartbeat'}, receive {event,data}
+```
+
+Workers' WebSocketPair adapter is on the roadmap.
+
 ## Design principles
 
 - **Contract-first, flat registry.** A route is data (`contract({...})`), not a link

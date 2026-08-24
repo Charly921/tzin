@@ -22,11 +22,13 @@
     "dev": "tsx src/cli.ts"
   },
   "dependencies": {
-    "@sinclair/typebox": "^0.34.0"
+    "@sinclair/typebox": "^0.34.0",
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "@hono/node-server": "^2.1.1",
     "@types/node": "^26.2.0",
+    "@types/ws": "^8.18.1",
     "autocannon": "^8.0.0",
     "express": "^5.2.1",
     "hono": "^4.0.0",

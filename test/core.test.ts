@@ -941,3 +941,65 @@ describe('browser channels client', () => {
     server.close()
   })
 })
+
+describe('native websockets', () => {
+  it('channels over WS: presence join, broadcast, close -> leave', async () => {
+    const { attachChannels } = await import('../src/ws-node.js')
+    const { wsChannels } = await import('../src/ws.js')
+    const hub = new Hub()
+    const presence = new Presence(hub, 30_000)
+    const app = createApp([...routes, ...channelRoutes(hub, { presence })])
+    const server = await listen(app, 0)
+    attachChannels(server, [wsChannels(hub, { presence })])
+    const addr = server.address()
+    const port = typeof addr === 'object' && addr ? addr.port : 0
+
+    // ada connects with presence
+    const ada = new WebSocket(`ws://127.0.0.1:${port}/channels/room?member=ada`)
+    ada.onerror = () => ada.close()
+
+    const frames: Record<string, unknown>[] = []
+    ada.onmessage = (ev) => frames.push(JSON.parse(String(ev.data)))
+    const adaOpen = new Promise((res, rej) => {
+      ada.onopen = res
+      setTimeout(() => rej(new Error('ada ws open timeout')), 2000)
+    })
+
+    // bob subscribes too and waits for ada's greeting
+    const bob = new WebSocket(`ws://127.0.0.1:${port}/channels/room`)
+    bob.onerror = () => bob.close()
+    const greeted = new Promise<string>((resolve) => {
+      bob.onmessage = (ev) => {
+        const f = JSON.parse(String(ev.data))
+        if (f.event === 'greet') resolve(f.data.text)
+      }
+    })
+    await Promise.all([adaOpen, new Promise((res) => (bob.onopen = res))])
+
+    ada.send(JSON.stringify({ type: 'push', event: 'greet', data: { text: 'ws hi' } }))
+    await expect(greeted).resolves.toBe('ws hi')
+
+    // presence joined via ?member=
+    expect(presence.snapshot('room').some((m) => m.member === 'ada')).toBe(true)
+
+    // heartbeat frame refreshes without error; invalid frames get error reply
+    ada.send(JSON.stringify({ type: 'heartbeat' }))
+    ada.send('not json')
+    await new Promise((r) => setTimeout(r, 50))
+    expect(frames.some((f) => (f as { error?: string }).error?.includes('invalid JSON'))).toBe(true)
+
+    // close -> presence leave broadcast
+    const leftPromise = new Promise<string[]>((resolve) => {
+      bob.onmessage = (ev) => {
+        const f = JSON.parse(String(ev.data))
+        if (f.event === 'presence_diff') resolve(f.data.leaves)
+      }
+    })
+    ada.close()
+    await expect(leftPromise).resolves.toContain('ada')
+
+    bob.close()
+    server.closeAllConnections?.()
+    server.close()
+  })
+})
