@@ -18,6 +18,8 @@ const ValidationError = t.Object({ error: t.String(), details: t.Optional(t.Arra
 const getUser = contract({
   method: 'GET',
   path: '/users/:id',
+  name: 'get_user',
+  description: 'Look up a user by id',
   params: t.Object({ id: t.String({ minLength: 1 }) }),
   responses: {
     200: t.Object({ id: t.String(), name: t.String(), tags: t.Array(t.String()) }),
@@ -694,8 +696,7 @@ describe('realtime channels', () => {
   })
 })
 
-describe('router trie', () => {
-  const r = (path: string, method = 'GET', tag = path) =>
+describe('router trie', () => {  const r = (path: string, method = 'GET', tag = path) =>
     impl(
       contract({ method: method as never, path, responses: { 200: t.Object({ route: t.String() }) } }),
       async () => ({ status: 200 as const, body: { route: tag } }),
@@ -744,5 +745,94 @@ describe('router trie', () => {
     const app = createApp([r('/slashed', 'GET', 'yes')])
     expect((await app.fetch(new Request('http://x/slashed/'))).status).toBe(200)
     expect((await app.fetch(new Request('http://x/unmatched'))).status).toBe(404)
+  })
+})
+
+describe('MCP over HTTP', () => {
+  const mcpApp = createApp(routes, { mcp: true })
+
+  it('serves initialize, tools/list and tools/call at POST /mcp', async () => {
+    const post = (body: unknown) =>
+      mcpApp.fetch(
+        new Request('http://x/mcp', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(body),
+        }),
+      )
+
+    const init = await post({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} })
+    expect(init.status).toBe(200)
+    expect((await init.json()).result.serverInfo.name).toBe('tzin')
+
+    const tools = await post({ jsonrpc: '2.0', id: 2, method: 'tools/list' })
+    const toolNames = (await tools.json()).result.tools.map((tl: { name: string }) => tl.name)
+    expect(toolNames).toContain('get_user')
+    expect(toolNames).not.toContain('health')
+
+    const call = await post({
+      jsonrpc: '2.0',
+      id: 3,
+      method: 'tools/call',
+      params: { name: 'get_user', arguments: { id: 'u1' } },
+    })
+    const called = await call.json()
+    expect(called.result.isError).toBeUndefined()
+    expect(JSON.parse(called.result.content[0].text)).toEqual({ id: 'u1', name: 'Ada', tags: ['admin'] })
+  })
+
+  it('notifications -> 202, malformed JSON -> parse error, GET -> 405', async () => {
+    const notify = await mcpApp.fetch(
+      new Request('http://x/mcp', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }),
+      }),
+    )
+    expect(notify.status).toBe(202)
+
+    const malformed = await mcpApp.fetch(
+      new Request('http://x/mcp', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{oops',
+      }),
+    )
+    expect(malformed.status).toBe(400)
+    expect((await malformed.json()).error.code).toBe(-32700)
+
+    const get = await mcpApp.fetch(new Request('http://x/mcp'))
+    expect(get.status).toBe(405)
+  })
+})
+
+describe('llms.txt generation', () => {
+  const llmsApp = createApp(routes, {
+    llms: true,
+    meta: { title: 'Demo API', description: 'Users and health.' },
+  })
+
+  it('renders an index of endpoints as text/plain', async () => {
+    const res = await llmsApp.fetch(new Request('http://x/llms.txt'))
+    expect(res.headers.get('content-type')).toContain('text/plain')
+    const body = await res.text()
+    expect(body).toContain('# Demo API')
+    expect(body).toContain('> Users and health.')
+    expect(body).toContain('[`GET /users/:id`](get_user)')
+    expect(body).toContain(': Look up a user by id')
+  })
+
+  it('llms-full.txt embeds the declared JSON Schemas', async () => {
+    const res = await llmsApp.fetch(new Request('http://x/llms-full.txt'))
+    const body = await res.text()
+    expect(body).toContain('### GET /users/:id (get_user)')
+    expect(body).toContain('"tags"')
+    expect(body).toContain('response 404 schema:')
+  })
+
+  it('is off by default', async () => {
+    const off = createApp([healthRoute])
+    expect((await off.fetch(new Request('http://x/llms.txt'))).status).toBe(404)
+    expect((await off.fetch(new Request('http://x/mcp', { method: 'POST' }))).status).toBe(404)
   })
 })

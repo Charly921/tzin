@@ -144,6 +144,20 @@ startStdioMcp(app) // newline-delimited JSON-RPC on stdio
 - Contract-level `name` and `description` become the tool's identity; OpenAPI reuses
   them as `operationId`/`description`.
 
+Prefer HTTP? Enable the Streamable HTTP transport on the same app:
+
+```ts
+const app = createApp(routes, { mcp: true }) // POST /mcp speaks JSON-RPC
+```
+
+And give LLMs a map of your API straight from the contracts:
+
+```ts
+const app = createApp(routes, { llms: true, meta: { title: 'My API' } })
+// GET /llms.txt       — index of endpoints (method, path, name, description)
+// GET /llms-full.txt  — same index plus every declared JSON Schema inline
+```
+
 ## Realtime channels with presence
 
 Phoenix-style channels, mounted as ordinary routes — SSE down, POST up, so it

@@ -4,6 +4,8 @@ import { createMatcher } from './router.js'
 import { Ctx, type ContextKey } from './context.js'
 import { compose, type Middleware } from './middleware.js'
 import type { ProvidedEntry } from './provide.js'
+import { handleMcpMessage } from './mcp.js'
+import { renderLlmsTxt, renderLlmsFullTxt, type ApiMeta } from './llms.js'
 
 export interface App {
   routes: RouteImpl<any>[]
@@ -13,6 +15,11 @@ export interface App {
 export interface AppOptions {
   middleware?: Middleware[]
   provides?: ProvidedEntry[]
+  /** Serve the MCP Streamable HTTP transport at POST /mcp. */
+  mcp?: boolean
+  /** Serve /llms.txt and /llms-full.txt generated from contracts. */
+  llms?: boolean
+  meta?: ApiMeta
 }
 
 function validationError(section: string, schema: unknown, value: unknown): HttpError {
@@ -106,7 +113,35 @@ export function createApp(routes: RouteImpl<any>[], options: AppOptions = {}): A
   const hasSeed = seed.size > 0
 
   async function fetch(req: Request): Promise<Response> {
+    const pathname = pathnameOf(req.url)
     try {
+      if (options.mcp && pathname === '/mcp') {
+        if (req.method !== 'POST') {
+          throw new HttpError(405, 'MCP HTTP transport accepts POST only')
+        }
+        let msg: unknown
+        try {
+          msg = await req.json()
+        } catch {
+          return Response.json(
+            { jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } },
+            { status: 400 },
+          )
+        }
+        const reply = await handleMcpMessage(app, msg as never)
+        if (!reply) return new Response(null, { status: 202 })
+        return Response.json(reply)
+      }
+      if (options.llms && pathname === '/llms.txt') {
+        return new Response(renderLlmsTxt(routes, options.meta), {
+          headers: { 'content-type': 'text/plain; charset=utf-8' },
+        })
+      }
+      if (options.llms && pathname === '/llms-full.txt') {
+        return new Response(renderLlmsFullTxt(routes, options.meta), {
+          headers: { 'content-type': 'text/plain; charset=utf-8' },
+        })
+      }
       return await handle(req, new Ctx(req.signal, hasSeed ? seed : undefined))
     } catch (err) {
       if (err instanceof HttpError) {
@@ -117,5 +152,6 @@ export function createApp(routes: RouteImpl<any>[], options: AppOptions = {}): A
     }
   }
 
-  return { routes, fetch }
+  const app: App = { routes, fetch }
+  return app
 }
