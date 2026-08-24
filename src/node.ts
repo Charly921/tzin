@@ -48,13 +48,39 @@ export function listen(app: App, port = 3000): Promise<Server> {
       } as unknown as Request
 
       const res = await app.fetch(req)
-      const text = fastResponseText(res) ?? (await res.text())
       const headers: Record<string, string | string[]> = {}
       res.headers.forEach((value, key) => {
         headers[key] = key === 'set-cookie' ? res.headers.getSetCookie() : value
       })
+
+      const fast = fastResponseText(res)
+      if (fast !== undefined) {
+        nodeRes.writeHead(res.status, headers)
+        nodeRes.end(fast)
+        return
+      }
+
+      // Streaming response (SSE, raw()): pump with backpressure instead of
+      // buffering — text()/arrayBuffer() would wait for the stream to close,
+      // which for event streams is never.
       nodeRes.writeHead(res.status, headers)
-      nodeRes.end(text)
+      if (!res.body) {
+        nodeRes.end()
+        return
+      }
+      const reader = res.body.getReader()
+      try {
+        for (;;) {
+          const { done, value } = await reader.read()
+          if (done) break
+          if (!nodeRes.write(value)) {
+            await new Promise<void>((resolve) => nodeRes.once('drain', resolve))
+          }
+        }
+        nodeRes.end()
+      } catch {
+        nodeRes.destroy()
+      }
     } catch (err) {
       if (!nodeRes.headersSent) {
         nodeRes.statusCode = 500

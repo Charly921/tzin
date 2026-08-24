@@ -186,6 +186,19 @@ Members that stop heartbeating are swept and announced via `presence_diff` —
 ghost clients disappear even after crashes. The in-memory `Hub` is one process;
 multi-node deployments swap in a Redis/Durable-Object-backed hub.
 
+A zero-dependency client ships for browsers (and Node >= 22 with any
+EventSource polyfill) — auto-heartbeat, presence events and reconnection via
+the platform's EventSource:
+
+```ts
+import { joinChannel } from 'tzin/client-browser'
+
+const chat = joinChannel('https://api.example.com', 'lobby', { member: 'ada' })
+chat.on('message', (data) => render(data))
+chat.on('presence_diff', (d) => updateRoster(d))
+await chat.push('message', { text: 'hello' })
+```
+
 ## Design principles
 
 - **Contract-first, flat registry.** A route is data (`contract({...})`), not a link

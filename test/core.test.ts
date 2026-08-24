@@ -836,3 +836,108 @@ describe('llms.txt generation', () => {
     expect((await off.fetch(new Request('http://x/mcp', { method: 'POST' }))).status).toBe(404)
   })
 })
+
+import { joinChannel } from '../src/client-browser.js'
+
+describe('browser channels client', () => {
+  // Minimal EventSource over fetch streaming: enough to exercise the real
+  // SSE wire protocol from Node, which has no global EventSource.
+  class FetchEventSource {
+    #listeners = new Map<string, Set<(ev: { data: string }) => void>>()
+    #ctrl = new AbortController()
+    constructor(url: string) {
+      void (async () => {
+        const res = await fetch(url, { signal: this.#ctrl.signal })
+        if (!res.body) return
+        const reader = res.body.getReader()
+        const decoder = new TextDecoder()
+        let buf = ''
+        try {
+          for (;;) {
+            const { done, value } = await reader.read()
+            if (done) break
+            buf += decoder.decode(value, { stream: true })
+            let idx: number
+            while ((idx = buf.indexOf('\n\n')) !== -1) {
+              const block = buf.slice(0, idx)
+              buf = buf.slice(idx + 2)
+              let event = 'message'
+              const dataLines: string[] = []
+              for (const line of block.split('\n')) {
+                if (line.startsWith(':')) continue
+                if (line.startsWith('event:')) event = line.slice(6).trim()
+                else if (line.startsWith('data:')) dataLines.push(line.slice(5).trim())
+              }
+              if (dataLines.length) this.#emit(event, dataLines.join('\n'))
+            }
+          }
+        } catch {
+          /* aborted */
+        }
+      })()
+    }
+    #emit(type: string, data: string): void {
+      const set = this.#listeners.get(type)
+      if (set) for (const cb of set) cb({ data })
+    }
+    addEventListener(type: string, listener: (ev: { data: string }) => void): void {
+      let set = this.#listeners.get(type)
+      if (!set) {
+        set = new Set()
+        this.#listeners.set(type, set)
+      }
+      set.add(listener)
+    }
+    close(): void {
+      this.#ctrl.abort()
+    }
+  }
+
+  it('receives broadcasts and presence events; heartbeats keep membership alive', async () => {
+    vi.useRealTimers()
+    const hub = new Hub()
+    const presence = new Presence(hub, 400)
+    presence.startSweeping(100)
+    const app = createApp([...routes, ...channelRoutes(hub, { presence })])
+    const server = await listen(app, 0)
+    const addr = server.address()
+    const port = typeof addr === 'object' && addr ? addr.port : 0
+    const base = `http://127.0.0.1:${port}`
+
+    const esOpts = { eventSource: FetchEventSource as unknown as never }
+    const ada = joinChannel(base, 'room', { member: 'ada', heartbeatMs: 120, ...esOpts })
+    const bob = joinChannel(base, 'room', esOpts)
+
+    const statePromise = new Promise<{ members: { member: string }[] }>((resolve) => {
+      ada.on('presence_state', resolve)
+    })
+
+    await expect(
+      Promise.race([
+        statePromise.then((s) => {
+          if (!s.members.some((m) => m.member === 'ada')) throw new Error('ada missing')
+          return s
+        }),
+        new Promise<never>((_, rej) => setTimeout(() => rej(new Error('no presence_state')), 2000)),
+      ]),
+    ).resolves.toBeTruthy()
+
+    const greeted = new Promise<string>((resolve) => bob.on('greet', (d) => resolve(d.text)))
+    const pushed = await ada.push('greet', { text: 'hi bob' })
+    expect(pushed.delivered).toBeGreaterThan(0)
+    await expect(greeted).resolves.toBe('hi bob')
+
+    // Auto-heartbeat keeps ada listed past the TTL (400ms).
+    await new Promise((r) => setTimeout(r, 550))
+    expect(presence.snapshot('room').some((m) => m.member === 'ada')).toBe(true)
+
+    ada.close()
+    await new Promise((r) => setTimeout(r, 150))
+    expect(presence.snapshot('room').some((m) => m.member === 'ada')).toBe(false)
+
+    bob.close()
+    presence.stopSweeping()
+    server.closeAllConnections?.()
+    server.close()
+  })
+})
