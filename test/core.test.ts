@@ -167,13 +167,12 @@ describe('typed client end-to-end', () => {
       )
 
       const ok = await api.getUser({ params: { id: 'u1' } })
-      const okData = ok.data
-      if ('error' in okData) {
-        expectTypeOf(okData.error).toEqualTypeOf<string>()
-      } else {
-        expectTypeOf(okData).toEqualTypeOf<{ id: string; name: string; tags: string[] }>()
+      if (ok.status === 200) {
+        expectTypeOf(ok.body).toEqualTypeOf<{ id: string; name: string; tags: string[] }>()
+        expect(ok.body.name).toBe('Ada')
+      } else if (ok.status === 404) {
+        expectTypeOf(ok.body).toEqualTypeOf<{ error: string }>()
       }
-      expect(ok.status).toBe(200)
 
       const created = await api.createUser({ body: { name: 'Linus', email: 'l@kernel.org' } })
       expect(created.status).toBe(201)
@@ -183,7 +182,7 @@ describe('typed client end-to-end', () => {
 
       const list = await api.listUsers({ query: { limit: '1' } })
       expect(list.status).toBe(200)
-      expect(list.data).toHaveLength(1)
+      if (list.status === 200) expect(list.body).toHaveLength(1)
     } finally {
       server.closeAllConnections?.()
       server.close()

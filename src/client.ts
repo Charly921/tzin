@@ -1,13 +1,20 @@
-import type { AnyContract, ResponseOf, SectionsOf } from './contract.js'
+import type { AnyContract, StaticOf, SectionsOf } from './contract.js'
 
-export interface CallerResult<C extends AnyContract> {
-  status: number
-  data: ResponseOf<C>['body'] | { error: string; details?: unknown }
-}
+/**
+ * One union member per declared response status: checking `res.status === 200`
+ * narrows `body` to exactly what the contract promised. The client trusts the
+ * contract completely — an undeclared status is a contract violation.
+ */
+export type ClientResult<C extends AnyContract> = {
+  [K in keyof C['responses']]: {
+    status: K extends number ? K : K extends `${infer N extends number}` ? N : never
+    body: StaticOf<C['responses'][K]>
+  }
+}[keyof C['responses']]
 
 export type CallerFn<C extends AnyContract> = (
   input: SectionsOf<C> & { fetchInit?: RequestInit },
-) => Promise<CallerResult<C>>
+) => Promise<ClientResult<C>>
 
 /** Flat mapped type over a record of contracts: O(routes), no nesting. */
 export type ClientOf<Routes extends Record<string, AnyContract>> = {
@@ -35,13 +42,13 @@ export function client<Routes extends Record<string, AnyContract>>(
         const init: RequestInit = { method: c.method, ...input.fetchInit }
         if ('body' in c && c.body) init.body = JSON.stringify(input.body)
         const res = await fetch(baseUrl + path, init)
-        let data: unknown
+        let body: unknown
         try {
-          data = await res.json()
+          body = await res.json()
         } catch {
-          data = null
+          body = null
         }
-        return { status: res.status, data }
+        return { status: res.status, body }
       }
     },
   })

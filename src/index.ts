@@ -14,7 +14,7 @@ export {
 } from './contract.js'
 
 export { createApp, type App } from './server.js'
-export { client, type ClientOf, type CallerFn, type CallerResult } from './client.js'
+export { client, type ClientOf, type ClientResult, type CallerFn } from './client.js'
 export { generateOpenApi } from './openapi.js'
 export { listen } from './node.js'
 export { t, Value } from './schema.js'

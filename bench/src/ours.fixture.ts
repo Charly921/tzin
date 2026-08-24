@@ -1417,6 +1417,5 @@ export type AllSignatures = { [K in keyof ApiClient]: Parameters<ApiClient[K]> }
 
 export async function demo(api: ApiClient) {
   const r = await api.get_res0_1({ params: { id: 'abc' } })
-  if ('error' in r.data) return r.data.error
-  return r.data.item.name
+  return r.status === 200 ? r.body.item.name : null
 }

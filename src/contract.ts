@@ -32,7 +32,7 @@ export type AnyContract = ContractDef
 /* over route chains -> constant cost per endpoint)                   */
 /* ------------------------------------------------------------------ */
 
-type StaticOf<S> = S extends TSchema ? Static<S> : never
+export type StaticOf<S> = S extends TSchema ? Static<S> : never
 
 /** '/users/:id/posts/:postId' -> 'id' | 'postId' */
 export type PathParamNames<P extends string> =
