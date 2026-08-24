@@ -105,6 +105,24 @@ A flat registry of plain objects has neither failure mode by construction.
 *Honest caveat: the Hono fixture returns constant JSON without validators; the
 documented blow-ups compound further when `zValidator` inference enters the chain.*
 
+### Runtime throughput
+
+100 routes · `GET /r50/item` · 64 connections · 5s (`npm run bench:http`, autocannon,
+each framework in its own process):
+
+| Framework | req/s | p99 |
+|---|---|---|
+| hono | ~30–38k | 3–4ms |
+| express | ~15–17k | 7ms |
+| tzin | ~14–16k | 7–9ms |
+
+Routing itself is a radix trie built at app creation: **9.1M lookups/s with 100
+routes** (~31× a regex linear scan, and flat regardless of route count —
+`npm run bench:lookup`). Full TypeBox validation of every declared section costs
+≈0.05µs per request. The remaining gap to hono is request-pipeline overhead, not
+routing or validation; tzin deliberately spends cycles on validation and typed
+error mapping that bare routers don't do.
+
 ## AI-native: every API is an MCP server
 
 tzin ships first-class [MCP](https://modelcontextprotocol.io) support — the same

@@ -626,3 +626,56 @@ describe('realtime channels', () => {
     presence.stopSweeping()
   })
 })
+
+describe('router trie', () => {
+  const r = (path: string, method = 'GET', tag = path) =>
+    impl(
+      contract({ method: method as never, path, responses: { 200: t.Object({ route: t.String() }) } }),
+      async () => ({ status: 200 as const, body: { route: tag } }),
+    )
+
+  it('static segments win over dynamic ones', async () => {
+    const app = createApp([r('/users/:id', 'GET', 'dynamic'), r('/users/me', 'GET', 'static')])
+    const me = await app.fetch(new Request('http://x/users/me'))
+    const other = await app.fetch(new Request('http://x/users/42'))
+
+    expect(await me.json()).toEqual({ route: 'static' })
+    expect(await other.json()).toEqual({ route: 'dynamic' })
+  })
+
+  it('same path, different methods route independently', async () => {
+    const app = createApp([
+      r('/things', 'GET', 'list'),
+      r('/things', 'POST', 'create'),
+      r('/things/:id', 'DELETE', 'remove'),
+    ])
+
+    expect((await app.fetch(new Request('http://x/things'))).status).toBe(200)
+    expect((await app.fetch(new Request('http://x/things', { method: 'POST' }))).status).toBe(200)
+    const del = await app.fetch(new Request('http://x/things/9', { method: 'DELETE' }))
+    expect(await del.json()).toEqual({ route: 'remove' })
+    expect((await app.fetch(new Request('http://x/things/9'))).status).toBe(404)
+  })
+
+  it('nested params and first-registration tiebreak', async () => {
+    const app = createApp([
+      r('/a/:x/b/:y', 'GET', 'nested'),
+      r('/dup', 'GET', 'first'),
+      r('/dup', 'GET', 'second'),
+    ])
+    const nested = await app.fetch(new Request('http://x/a/1/b/2'))
+    expect(nested.status).toBe(200)
+    expect(await app.fetch(new Request('http://x/dup')).then((res) => res.json())).toEqual({
+      route: 'first',
+    })
+
+    const input = await app.fetch(new Request('http://x/a/%20/b/2'))
+    expect(input.status).toBe(200)
+  })
+
+  it('trailing slash matches the same node', async () => {
+    const app = createApp([r('/slashed', 'GET', 'yes')])
+    expect((await app.fetch(new Request('http://x/slashed/'))).status).toBe(200)
+    expect((await app.fetch(new Request('http://x/unmatched'))).status).toBe(404)
+  })
+})
