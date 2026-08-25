@@ -11,7 +11,7 @@
 measured (see [Benchmarks](#benchmarks)), but this is not yet production software.
 
 ```sh
-npm install tzin
+npm install @carlos-tzin/tzin
 ```
 
 ## Why another framework?
@@ -29,8 +29,8 @@ The TypeScript backend landscape is crowded — and still leaves real gaps:
 tzin's answer: **declare a contract once**, get everything else for free.
 
 ```ts
-import { t } from 'tzin'
-import { contract, impl, createApp } from 'tzin'
+import { t } from '@carlos-tzin/tzin'
+import { contract, impl, createApp } from '@carlos-tzin/tzin'
 
 const getUser = contract({
   method: 'GET',
@@ -146,7 +146,7 @@ contracts that generate your OpenAPI document also expose your endpoints as tool
 for AI agents:
 
 ```ts
-import { startStdioMcp } from 'tzin'
+import { startStdioMcp } from '@carlos-tzin/tzin'
 
 const app = createApp(routes)
 startStdioMcp(app) // newline-delimited JSON-RPC on stdio
@@ -184,7 +184,7 @@ Phoenix-style channels, mounted as ordinary routes — SSE down, POST up, so it
 runs on every runtime including Workers:
 
 ```ts
-import { Hub, Presence, channelRoutes } from 'tzin'
+import { Hub, Presence, channelRoutes } from '@carlos-tzin/tzin'
 
 const hub = new Hub()
 const presence = new Presence(hub, 30_000)
@@ -201,7 +201,7 @@ ghost clients disappear even after crashes. The in-memory `Hub` is one process;
 multi-node deployments wire hubs together over a message bus:
 
 ```ts
-import { Hub } from 'tzin'
+import { Hub } from '@carlos-tzin/tzin'
 import { LocalBus, type MessageBus } from 'tzin/bus'
 
 // Any PUBLISH/SUBSCRIBE transport maps onto this 2-method interface:
@@ -252,8 +252,8 @@ exactly like Node/Bun (workerd drops sends that come from another request's
 context, which is why plain fetch handlers can't relay between sockets):
 
 ```ts
-import { toDurableWorker, toWorker, TzinChannels } from 'tzin'
-import { Hub, Presence, channelRoutes, wsChannels, createApp } from 'tzin'
+import { toDurableWorker, toWorker, TzinChannels } from '@carlos-tzin/tzin'
+import { Hub, Presence, channelRoutes, wsChannels, createApp } from '@carlos-tzin/tzin'
 
 export { TzinChannels } // workerd discovers DO classes among exports
 

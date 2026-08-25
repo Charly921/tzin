@@ -1,5 +1,5 @@
 {
-  "name": "tzin",
+  "name": "@carlos-tzin/tzin",
   "version": "0.1.0",
   "description": "Contract-first TypeScript framework. Types that scale, realtime channels with presence, and an MCP server for every API.",
   "license": "MIT",
