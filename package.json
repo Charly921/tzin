@@ -46,6 +46,7 @@
     "typecheck:ours": "tsc -p bench/tsconfig.ours.json --noEmit --extendedDiagnostics",
     "typecheck:hono": "tsc -p bench/tsconfig.hono.json --noEmit --extendedDiagnostics",
     "probe:mcp": "node scripts/mcp-client.mjs",
+    "probe:workers": "node scripts/workers-probe.mjs",
     "bench:lookup": "tsx bench/lookup.bench.mjs",
     "bench:http": "tsx bench/http.bench.mjs",
     "bench:pipeline": "tsx bench/pipeline.bench.mjs",
@@ -62,6 +63,7 @@
     "autocannon": "^8.0.0",
     "express": "^5.2.1",
     "hono": "^4.0.0",
+    "miniflare": "^5.20260820.0-alpha",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
     "vitest": "^2.1.0"

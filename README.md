@@ -232,7 +232,35 @@ attachChannels(server, [wsChannels(hub, { presence })])
 // ws://host/channels/:topic?member=ada — frames: {type:'push'|'heartbeat'}, receive {event,data}
 ```
 
-Workers' WebSocketPair adapter is on the roadmap.
+On Cloudflare Workers, run the whole app inside a Durable Object so every
+connection shares one I/O context — cross-connection broadcast then behaves
+exactly like Node/Bun (workerd drops sends that come from another request's
+context, which is why plain fetch handlers can't relay between sockets):
+
+```ts
+import { toDurableWorker, toWorker, TzinChannels } from 'tzin'
+import { Hub, Presence, channelRoutes, wsChannels, createApp } from 'tzin'
+
+export { TzinChannels } // workerd discovers DO classes among exports
+
+export default toDurableWorker(() => {
+  const hub = new Hub()
+  const presence = new Presence(hub)
+  const app = createApp([...routes, ...channelRoutes(hub, { presence })])
+  return toWorker(app, { wsRoutes: [wsChannels(hub, { presence })] })
+})
+```
+
+```jsonc
+// wrangler config additions:
+"durable_objects": {
+  "bindings": [{ "name": "TZIN_APP", "class_name": "TzinChannels" }]
+},
+"migrations": [{ "tag": "v1", "new_sqlite_classes": ["TzinChannels"] }]
+```
+
+Verified against real workerd via miniflare (`npm run probe:workers`):
+HTTP ✓, WS upgrade ✓, roster ✓, broadcast across connections ✓, leave diff ✓.
 
 ## Design principles
 
@@ -251,7 +279,7 @@ Workers' WebSocketPair adapter is on the roadmap.
 
 - [x] Spike: contracts, router, server, typed client, OpenAPI generation
 - [x] Middleware composition (onion-style) with typed per-request context
-- [ ] Adapters: Node (done, minimal), Workers (done), Bun (written against documented API, unverified)
+- [x] Adapters: Node (listen + streaming SSE), Bun (verified e2e), Workers (HTTP + DO-backed WebSockets, verified via miniflare/workerd)
 - [x] Streaming/SSE (`sse()` helper + `raw()` escape hatch)
 - [x] Realtime: Hub (pub/sub), Presence (TTL + diffs), mountable channel routes
 - [ ] Streaming/SSE

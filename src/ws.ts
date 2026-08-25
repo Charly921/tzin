@@ -46,6 +46,8 @@ export function wsChannels(hub: Hub, options: WsChannelOptions = {}): WsRoute {
       const member = url.searchParams.get('member') ?? undefined
       const unsub = hub.subscribe(topic, (e) => send({ event: e.event, data: e.data }))
       if (member && presence) presence.join(topic, member)
+      // Initial full view on connect (parity with the SSE channel routes).
+      if (presence) send({ event: 'presence_state', data: { members: presence.snapshot(topic) } })
       return { topic, member, unsub, __send: send } satisfies ChannelState
     },
 
