@@ -91,6 +91,30 @@ function check(section: string, schema: unknown, value: unknown): void {
   if (!Value.Check(schema as never, value)) throw validationError(section, schema, value)
 }
 
+/**
+ * URL search params are always strings; declared boolean/number query fields
+ * are coerced before validation so contracts can speak real types.
+ * Unrecognized values are left as-is and fail validation with a clear error.
+ */
+function coerceQuery(schema: unknown, raw: Record<string, string>): Record<string, unknown> {
+  const props = (schema as { properties?: Record<string, { type?: string | string[] }> }).properties
+  if (!props) return raw
+  const out: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(raw)) {
+    const types = props[key]?.type
+    const list = Array.isArray(types) ? types : types ? [types] : []
+    if (typeof value === 'string' && list.includes('boolean')) {
+      out[key] = value === 'true' ? true : value === 'false' ? false : value
+    } else if (typeof value === 'string' && (list.includes('number') || list.includes('integer'))) {
+      const n = Number(value)
+      out[key] = Number.isNaN(n) ? value : n
+    } else {
+      out[key] = value
+    }
+  }
+  return out
+}
+
 /** Unwrap a Response produced through the middleware path into a RawReply. */
 function toRawReply(res: Response): RawReply {
   const fast = fastResponseText(res)
@@ -133,16 +157,19 @@ export function createApp(routes: RouteImpl<any>[], options: AppOptions = {}): A
     const c = hit.route.contract
     const input: Record<string, unknown> = { ctx }
 
-    if ('params' in c && c.params) {
-      check('path params', c.params, hit.params)
+    // Params are always injected (handler types derive them from the path
+    // string); validation applies only when a params schema is declared.
+    if ('params' in hit && hit.params !== undefined) {
       input.params = hit.params
+      if (c.params) check('path params', c.params, hit.params)
     }
 
     if ('query' in c && c.query) {
       const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''
       const rawQuery = Object.fromEntries(new URLSearchParams(qs))
-      check('query', c.query, rawQuery)
-      input.query = rawQuery
+      const query = coerceQuery(c.query, rawQuery)
+      check('query', c.query, query)
+      input.query = query
     }
 
     if ('headers' in c && c.headers) {

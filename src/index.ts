@@ -28,7 +28,7 @@ export {
   toTool,
   type RpcRequest,
 } from './mcp.js'
-export { startStdioMcp } from './mcp_stdio.js'
+export { startStdioMcp, startStdioMcpFromStreams } from './mcp_stdio.js'
 export { Hub, type ChannelEvent, type Subscriber } from './hub.js'
 export { Presence, type MemberInfo } from './presence.js'
 export { channelRoutes, type ChannelOptions } from './channels.js'

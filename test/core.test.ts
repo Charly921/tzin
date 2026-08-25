@@ -128,6 +128,34 @@ describe('routing & extractors', () => {
     expect(await res.json()).toEqual([{ id: 'u1' }])
   })
 
+  it('query params coerce to declared primitive types', async () => {
+    const page = contract({
+      method: 'GET',
+      path: '/page',
+      query: t.Object({
+        active: t.Optional(t.Boolean()),
+        size: t.Optional(t.Number()),
+        label: t.Optional(t.String()),
+      }),
+      responses: {
+        200: t.Object({ active: t.Boolean(), size: t.Number(), label: t.String() }),
+      },
+    })
+    const localApp = createApp([
+      impl(page, async ({ query }) => ({
+        status: 200 as const,
+        body: { active: !!query?.active, size: query?.size ?? 0, label: query?.label ?? '' },
+      })),
+    ])
+    const ok = await localApp.fetch(new Request('http://x/page?active=true&size=25&label=a'))
+    expect(await ok.json()).toEqual({ active: true, size: 25, label: 'a' })
+
+    // garbage that can't coerce stays a string and fails validation loudly
+    const bad = await localApp.fetch(new Request('http://x/page?active=maybe'))
+    expect(bad.status).toBe(400)
+    expect((await bad.json()).details).toContain('/active: Expected boolean')
+  })
+
   it('POST validates and creates', async () => {
     const res = await jsonReq('/users', {
       method: 'POST',

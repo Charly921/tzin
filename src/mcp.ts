@@ -26,6 +26,20 @@ export function toTool(route: RouteImpl<any>): Record<string, unknown> {
     }
   }
 
+  // Path placeholders without a declared params schema still surface in the
+  // tool schema (as strings) so clients know to send them.
+  if (!('params' in c && c.params)) {
+    const placeholders = [...c.path.matchAll(/:([A-Za-z0-9_]+)/g)].map((m) => m[1])
+    if (placeholders.length) {
+      properties.params = {
+        type: 'object',
+        properties: Object.fromEntries(placeholders.map((p) => [p, { type: 'string' }])),
+        required: placeholders,
+      }
+      required.push('params')
+    }
+  }
+
   const responseLines = Object.entries(c.responses)
     .map(([status, schema]) => {
       const desc =
@@ -97,8 +111,15 @@ async function callTool(app: App, name: string, args: unknown): Promise<Record<s
   const querySchema = 'query' in c ? c.query : undefined
   const bodySchema = 'body' in c ? c.body : undefined
 
-  const params = paramsSchema ? resolveSection(rawArgs, 'params', paramsSchema) : undefined
+  // Path params may arrive even without a declared params schema — resolve
+  // them against the route's own :placeholders so the tool stays callable.
   const requiredParams = [...c.path.matchAll(/:([A-Za-z0-9_]+)/g)].map((m) => m[1])
+  const params =
+    paramsSchema
+      ? resolveSection(rawArgs, 'params', paramsSchema)
+      : requiredParams.some((k) => k in rawArgs)
+        ? Object.fromEntries(requiredParams.filter((k) => k in rawArgs).map((k) => [k, rawArgs[k]]))
+        : undefined
   const missing = requiredParams.filter((k) => params?.[k] === undefined)
   if (missing.length) {
     return {
