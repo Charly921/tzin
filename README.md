@@ -20,6 +20,11 @@ Or scaffold a new project:
 npx create-tzin my-app
 ```
 
+## Documentation
+
+- **[API Reference](docs/api-reference.md)** — all exports, types, and options
+- **[Architecture Guide](docs/architecture.md)** — request pipeline, design decisions, internals
+
 ## Why another framework?
 
 The TypeScript backend landscape is crowded — and still leaves real gaps:
