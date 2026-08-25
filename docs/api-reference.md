@@ -451,6 +451,63 @@ const spec = generateOpenApi(routes, { title: 'My API', version: '1.0.0' })
 
 ---
 
+## Testing
+
+Import from `@carlos-tzin/tzin/test`.
+
+### `createTestClient(app)`
+
+Create a test client that starts a server and makes requests.
+
+```ts
+import { createTestClient } from '@carlos-tzin/tzin/test'
+
+const api = await createTestClient(app)
+
+const res = await api.get('/users/1')
+expect(res.status).toBe(200)
+expect(res.body).toEqual({ id: '1', name: 'Ada' })
+
+await api.close()
+```
+
+**Methods:**
+
+| Method | Description |
+|---|---|
+| `get(path, init?)` | GET request |
+| `post(path, body?, init?)` | POST request with JSON body |
+| `put(path, body?, init?)` | PUT request with JSON body |
+| `patch(path, body?, init?)` | PATCH request with JSON body |
+| `delete(path, init?)` | DELETE request |
+| `request(path, init)` | Custom request |
+| `close()` | Stop the server |
+| `baseUrl` | Base URL (e.g., `http://127.0.0.1:4000`) |
+
+### `expectSchema(schema, value)`
+
+Validate a value against a TypeBox schema. Throws with details if invalid.
+
+```ts
+import { expectSchema } from '@carlos-tzin/tzin/test'
+
+expectSchema(getUser.responses[200], { id: '1', name: 'Ada' }) // ok
+expectSchema(getUser.responses[200], { id: 123 }) // throws
+```
+
+### `mockSections(contract, overrides?)`
+
+Generate mock data for a contract's sections.
+
+```ts
+import { mockSections } from '@carlos-tzin/tzin/test'
+
+const mock = mockSections(getUser, { params: { id: '1' } })
+// { params: { id: '1' }, query: { fields: ['mock-string'] } }
+```
+
+---
+
 ## Types
 
 | Type | Description |

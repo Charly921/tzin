@@ -42,6 +42,10 @@
     "./ws": {
       "types": "./dist/ws.d.ts",
       "default": "./dist/ws.js"
+    },
+    "./test": {
+      "types": "./dist/test.d.ts",
+      "default": "./dist/test.js"
     }
   },
   "files": [
