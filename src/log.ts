@@ -76,12 +76,13 @@ function defaultTransport(entry: LogEntry, config: LoggerConfig): void {
 
 // ── Logger Factory ───────────────────────────────────────────────────
 
-function createLogger(config: LoggerConfig, context?: string): Logger {
-  const minLevel = LOG_LEVELS[config.level ?? 'info']
-  const transport = config.transport ?? ((entry) => defaultTransport(entry, config))
-
+function createLogger(context?: string): Logger {
   function log(level: LogLevel, message: string, data?: Record<string, unknown>): void {
+    const config = globalConfig
+    const minLevel = LOG_LEVELS[config.level ?? 'info']
     if (LOG_LEVELS[level] < minLevel) return
+
+    const transport = config.transport ?? ((entry) => defaultTransport(entry, config))
 
     const entry: LogEntry = {
       level,
@@ -100,7 +101,7 @@ function createLogger(config: LoggerConfig, context?: string): Logger {
     warn: (msg, data) => log('warn', msg, data),
     error: (msg, data) => log('error', msg, data),
     fatal: (msg, data) => log('fatal', msg, data),
-    child: (prefix) => createLogger(config, context ? `${context}:${prefix}` : prefix),
+    child: (prefix) => createLogger(context ? `${context}:${prefix}` : prefix),
   }
 }
 
@@ -127,14 +128,15 @@ export function configure(config: LoggerConfig): void {
  *
  * @example
  * ```ts
- * import { log } from '@carlos-tzin/tzin/log'
+ * import { getLogger } from '@carlos-tzin/tzin/log'
  *
+ * const log = getLogger()
  * log.info('Server started', { port: 3000 })
  * ```
  */
 export function getLogger(context?: string): Logger {
-  return createLogger(globalConfig, context)
+  return createLogger(context)
 }
 
-/** Convenience export */
-export const log = getLogger()
+/** Convenience export - reads config dynamically */
+export const log: Logger = createLogger()

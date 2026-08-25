@@ -1,5 +1,5 @@
 import type { TSchema } from '@sinclair/typebox'
-import { Value } from './schema.js'
+import { Value } from '@sinclair/typebox/value'
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -200,14 +200,14 @@ export function defineModel<S extends TSchema>(
 
     async findById(id) {
       const row = globalStore.findById(tableName, id, pk)
-      return row ? (schema.Decode(row as never) as SchemaToType<S>) : null
+      return row ? (Value.Decode(schema, row as never) as SchemaToType<S>) : null
     },
 
     async findFirst(where) {
       const rows = globalStore.findAll(tableName).filter((r) =>
         Object.entries(where).every(([k, v]) => r[k] === v),
       )
-      return rows[0] ? (schema.Decode(rows[0] as never) as SchemaToType<S>) : null
+      return rows[0] ? (Value.Decode(schema, rows[0] as never) as SchemaToType<S>) : null
     },
 
     findMany(where) {
@@ -275,7 +275,7 @@ export function defineModel<S extends TSchema>(
         },
         exec: async () => {
           const rows = applyFilters([], filters)
-          return rows.map((r) => schema.Decode(r as never) as SchemaToType<S>)
+          return rows.map((r) => Value.Decode(schema, r as never) as SchemaToType<S>)
         },
         first: async () => {
           const rows = await builder.exec()
@@ -291,7 +291,7 @@ export function defineModel<S extends TSchema>(
 
     async create(data) {
       const row = globalStore.insert(tableName, data as Record<string, unknown>)
-      return schema.Decode(row as never) as SchemaToType<S>
+      return Value.Decode(schema, row as never) as SchemaToType<S>
     },
 
     async createMany(data) {
@@ -300,7 +300,7 @@ export function defineModel<S extends TSchema>(
 
     async update(id, data) {
       const row = globalStore.update(tableName, id, data as Record<string, unknown>, pk)
-      return row ? (schema.Decode(row as never) as SchemaToType<S>) : null
+      return row ? (Value.Decode(schema, row as never) as SchemaToType<S>) : null
     },
 
     async delete(id) {
