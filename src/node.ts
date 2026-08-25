@@ -1,19 +1,24 @@
 import { createServer, type Server } from 'node:http'
-import type { App } from './server.js'
-import { fastResponseText } from './server.js'
+import type { App, RawReply } from './server.js'
 
 /**
  * Minimal Node adapter. Production version: streaming, WebSockets, graceful shutdown.
  *
- * Requests are duck-typed instead of constructed via `new Request()` — the
- * undici constructor costs ~13µs/request under load and is the single largest
- * adapter expense (measured with autocannon layer isolation). The object below
- * covers exactly the surface tzin dispatch uses: url, method, headers, signal,
- * json(), text(), arrayBuffer().
+ * Hot-path notes (measured with autocannon layer isolation):
+ * - Requests are duck-typed instead of constructed via `new Request()` — the
+ *   undici constructor costs ~13µs/request under load.
+ * - Replies come from app.dispatchRaw(): tzin-built responses never allocate
+ *   an undici Response (~19µs/request under load). raw()/SSE still arrive as
+ *   a Response and take the streaming branch below.
+ * - `headers` on the duck request is a lazy getter: undici Headers allocation
+ *   is wasted work for contracts without a headers/cookies section.
+ * - The abort signal is lazy too: AbortController + close listener are only
+ *   wired when ctx.signal is actually read (SSE, channels), never on the
+ *   JSON hot path.
  */
 export function listen(app: App, port = 3000): Promise<Server> {
+  const dispatch = app.dispatchRaw?.bind(app) ?? defaultDispatch(app)
   const server = createServer(async (nodeReq, nodeRes) => {
-    nodeReq.socket.setNoDelay(true)
     try {
       // Only drain the request stream when a body can actually be present.
       let bodyBuf: Buffer | undefined
@@ -26,18 +31,32 @@ export function listen(app: App, port = 3000): Promise<Server> {
         bodyBuf = Buffer.concat(chunks)
       }
 
-      // Abort the request signal when the connection dies mid-response,
-      // so SSE producers stop feeding disconnected clients.
-      const ac = new AbortController()
-      nodeRes.on('close', () => {
-        if (!nodeRes.writableEnded) ac.abort()
-      })
+      // Signal wiring is deferred: the AbortController + close-listener only
+      // materialize if something reads ctx.signal (SSE, channels). JSON
+      // requests never pay for it.
+      let cachedSignal: AbortSignal | undefined
+      const signalFactory = () => {
+        if (cachedSignal === undefined) {
+          const ac = new AbortController()
+          nodeRes.on('close', () => {
+            if (!nodeRes.writableEnded) ac.abort()
+          })
+          cachedSignal = ac.signal
+        }
+        return cachedSignal
+      }
 
+      let headers: Headers | undefined
       const req = {
         url: `http://${nodeReq.headers.host}${nodeReq.url}`,
         method: nodeReq.method,
-        headers: new Headers(nodeReq.headers as Record<string, string>),
-        signal: ac.signal,
+        get headers() {
+          return (headers ??= new Headers(nodeReq.headers as Record<string, string>))
+        },
+        get signal() {
+          return signalFactory()
+        },
+        __tzin_signal_factory: signalFactory,
         body: null,
         json: async () => {
           if (bodyBuf === undefined) throw new SyntaxError('Unexpected end of JSON input')
@@ -47,40 +66,36 @@ export function listen(app: App, port = 3000): Promise<Server> {
         arrayBuffer: async () => (bodyBuf ?? Buffer.alloc(0)).buffer,
       } as unknown as Request
 
-      const res = await app.fetch(req)
-      const headers: Record<string, string | string[]> = {}
-      res.headers.forEach((value, key) => {
-        headers[key] = key === 'set-cookie' ? res.headers.getSetCookie() : value
-      })
+      const reply = await dispatch(req)
 
-      const fast = fastResponseText(res)
-      if (fast !== undefined) {
-        nodeRes.writeHead(res.status, headers)
-        nodeRes.end(fast)
-        return
-      }
-
-      // Streaming response (SSE, raw()): pump with backpressure instead of
-      // buffering — text()/arrayBuffer() would wait for the stream to close,
-      // which for event streams is never.
-      nodeRes.writeHead(res.status, headers)
-      if (!res.body) {
-        nodeRes.end()
-        return
-      }
-      const reader = res.body.getReader()
-      try {
-        for (;;) {
-          const { done, value } = await reader.read()
-          if (done) break
-          if (!nodeRes.write(value)) {
-            await new Promise<void>((resolve) => nodeRes.once('drain', resolve))
-          }
+      if (reply.response) {
+        const res = reply.response
+        nodeRes.writeHead(res.status, resHeadersSlow(res))
+        // Streaming response (SSE, raw()): pump with backpressure instead of
+        // buffering — text()/arrayBuffer() would wait for the stream to close,
+        // which for event streams is never.
+        if (!res.body) {
+          nodeRes.end()
+          return
         }
-        nodeRes.end()
-      } catch {
-        nodeRes.destroy()
+        const reader = res.body.getReader()
+        try {
+          for (;;) {
+            const { done, value } = await reader.read()
+            if (done) break
+            if (!nodeRes.write(value)) {
+              await new Promise<void>((resolve) => nodeRes.once('drain', resolve))
+            }
+          }
+          nodeRes.end()
+        } catch {
+          nodeRes.destroy()
+        }
+        return
       }
+
+      nodeRes.writeHead(reply.status, reply.headers)
+      nodeRes.end(reply.text)
     } catch (err) {
       if (!nodeRes.headersSent) {
         nodeRes.statusCode = 500
@@ -91,7 +106,25 @@ export function listen(app: App, port = 3000): Promise<Server> {
       console.error(err)
     }
   })
+  // Nagle off once per socket, not per request.
+  server.on('connection', (socket) => socket.setNoDelay(true))
   return new Promise((resolve) => {
     server.listen(port, () => resolve(server))
   })
+}
+
+function resHeadersSlow(res: Response): Record<string, string | string[]> {
+  const headers: Record<string, string | string[]> = {}
+  res.headers.forEach((value, key) => {
+    headers[key] = key === 'set-cookie' ? res.headers.getSetCookie() : value
+  })
+  return headers
+}
+
+/** Fallback for App implementations without dispatchRaw (e.g. wrappers). */
+function defaultDispatch(app: App): (req: Request) => Promise<RawReply> {
+  return async (req) => {
+    const res = await app.fetch(req)
+    return { status: res.status, response: res }
+  }
 }

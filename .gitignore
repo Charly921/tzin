@@ -4,3 +4,4 @@ dist/
 SESSION.md
 nohup.out
 .http-*.ts
+.http-*.mjs

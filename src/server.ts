@@ -1,6 +1,6 @@
 import { Value } from './schema.js'
 import { HttpError, isRawResult, type RouteImpl } from './contract.js'
-import { createMatcher } from './router.js'
+import { createMatcher, type LookupResult, type RouteMatch } from './router.js'
 import { Ctx, type ContextKey } from './context.js'
 import { compose, type Middleware } from './middleware.js'
 import type { ProvidedEntry } from './provide.js'
@@ -10,6 +10,25 @@ import { renderLlmsTxt, renderLlmsFullTxt, type ApiMeta } from './llms.js'
 export interface App {
   routes: RouteImpl<any>[]
   fetch(req: Request): Promise<Response>
+  /**
+   * Same dispatch as fetch(), without constructing undici Responses for
+   * tzin-built replies (~19µs/request under load). Adapters that can write
+   * status/text/headers natively should prefer it.
+   */
+  dispatchRaw?(req: Request): Promise<RawReply>
+}
+
+/**
+ * A reply that hasn't been wrapped in an undici Response yet. Either fully
+ * materialized (text + headers) or a pass-through Response (raw()/SSE).
+ */
+export interface RawReply {
+  status: number
+  /** Pre-serialized body; absent means empty body (e.g. 202). */
+  text?: string
+  headers?: Record<string, string>
+  /** Streaming/raw escape hatch — adapters fall back to Response handling. */
+  response?: Response
 }
 
 export interface AppOptions {
@@ -41,18 +60,48 @@ export function fastResponseText(res: Response): string | undefined {
   return (res as unknown as Record<string, unknown>)[FAST_TEXT] as string | undefined
 }
 
+/**
+ * Responses tzin builds itself also carry their headers as a plain object,
+ * so adapters skip undici's Headers iteration entirely on the hot path.
+ */
+const FAST_HEADERS = '__tzin_headers'
+
+export function fastResponseHeaders(res: Response): Record<string, string> | undefined {
+  return (res as unknown as Record<string, unknown>)[FAST_HEADERS] as
+    | Record<string, string>
+    | undefined
+}
+
 function jsonFast(body: unknown, status: number): Response {
   const text = JSON.stringify(body)
   const res = new Response(text, {
     status,
     headers: { 'content-type': 'application/json' },
   })
-  ;(res as unknown as Record<string, unknown>)[FAST_TEXT] = text
+  const duck = res as unknown as Record<string, unknown>
+  duck[FAST_TEXT] = text
+  duck[FAST_HEADERS] = { 'content-type': 'application/json' }
   return res
 }
 
 function check(section: string, schema: unknown, value: unknown): void {
   if (!Value.Check(schema as never, value)) throw validationError(section, schema, value)
+}
+
+/** Unwrap a Response produced through the middleware path into a RawReply. */
+function toRawReply(res: Response): RawReply {
+  const fast = fastResponseText(res)
+  if (fast !== undefined) return { status: res.status, text: fast, headers: fastResponseHeaders(res) }
+  return { status: res.status, response: res }
+}
+
+/**
+ * Adapters may attach a signal factory instead of a real signal so Ctx can
+ * stay lazy; real Request objects carry a plain signal.
+ */
+export function signalSource(req: Request): AbortSignal | (() => AbortSignal | undefined) | undefined {
+  const duck = req as unknown as { __tzin_signal_factory?: () => AbortSignal | undefined }
+  return duck.__tzin_signal_factory ?? req.signal
 }
 
 /**
@@ -65,19 +114,19 @@ function pathnameOf(url: string): string {
   return end === -1 ? path : path.slice(0, end)
 }
 
+const JSON_HEADERS = { 'content-type': 'application/json' }
+
+type HandlerOutcome =
+  | { kind: 'raw'; response: Response }
+  | { kind: 'json'; status: number; body: unknown }
+
 export function createApp(routes: RouteImpl<any>[], options: AppOptions = {}): App {
   const matchRoute = createMatcher(
     routes.map((r) => ({ method: r.contract.method, path: r.contract.path, route: r })),
   )
 
-  async function dispatch(req: Request, ctx: Ctx): Promise<Response> {
-    const pathname = pathnameOf(req.url)
-    const hit = matchRoute(req.method, pathname)
-    if (!hit) throw new HttpError(404, 'Not Found')
-    if (!('route' in hit)) {
-      throw new HttpError(405, 'Method Not Allowed', undefined, { Allow: hit.allow.join(', ') })
-    }
-
+  /** Shared validation + handler invocation. Single source for both exits. */
+  async function runRoute(hit: RouteMatch<RouteImpl<any>>, req: Request, ctx: Ctx): Promise<HandlerOutcome> {
     const c = hit.route.contract
     const input: Record<string, unknown> = { ctx }
 
@@ -124,8 +173,48 @@ export function createApp(routes: RouteImpl<any>[], options: AppOptions = {}): A
     }
 
     const result = await hit.route.handler(input as never)
-    if (isRawResult(result)) return result.__tzin_raw
-    return jsonFast(result.body, result.status)
+    if (isRawResult(result)) return { kind: 'raw', response: result.__tzin_raw }
+    return { kind: 'json', status: result.status, body: result.body }
+  }
+
+  /**
+   * Route lookup memoized by "METHOD pathname". Real traffic repeats URLs
+   * constantly (keep-alive clients, polls), so the trie walk + path split +
+   * param decode collapse to a Map hit. Bounded: cleared when it exceeds
+   * ROUTE_CACHE_MAX so abusive unique-URL traffic can't grow it unbounded.
+   */
+  const routeCache = new Map<string, LookupResult<RouteImpl<any>>>()
+  function cachedMatch(method: string, pathname: string): LookupResult<RouteImpl<any>> {
+    const key = `${method} ${pathname}`
+    let hit = routeCache.get(key)
+    if (hit === undefined) {
+      hit = matchRoute(method, pathname)
+      if (routeCache.size >= 10_000) routeCache.clear()
+      routeCache.set(key, hit)
+    }
+    return hit
+  }
+
+  async function dispatch(req: Request, ctx: Ctx): Promise<Response> {
+    const pathname = pathnameOf(req.url)
+    const hit = cachedMatch(req.method, pathname)
+    if (!hit) throw new HttpError(404, 'Not Found')
+    if (!('route' in hit)) {
+      throw new HttpError(405, 'Method Not Allowed', undefined, { Allow: hit.allow.join(', ') })
+    }
+    const out = await runRoute(hit, req, ctx)
+    return out.kind === 'raw' ? out.response : jsonFast(out.body, out.status)
+  }
+
+  async function rawDispatch(req: Request, ctx: Ctx, pathname: string): Promise<RawReply> {
+    const hit = cachedMatch(req.method, pathname)
+    if (!hit) throw new HttpError(404, 'Not Found')
+    if (!('route' in hit)) {
+      throw new HttpError(405, 'Method Not Allowed', undefined, { Allow: hit.allow.join(', ') })
+    }
+    const out = await runRoute(hit, req, ctx)
+    if (out.kind === 'raw') return { status: out.response.status, response: out.response }
+    return { status: out.status, text: JSON.stringify(out.body), headers: JSON_HEADERS }
   }
 
   const middleware = options.middleware ?? []
@@ -137,7 +226,7 @@ export function createApp(routes: RouteImpl<any>[], options: AppOptions = {}): A
   )
   const hasSeed = seed.size > 0
 
-  async function fetch(req: Request): Promise<Response> {
+  async function dispatchRaw(req: Request): Promise<RawReply> {
     const pathname = pathnameOf(req.url)
     try {
       if (options.mcp && pathname === '/mcp') {
@@ -148,43 +237,62 @@ export function createApp(routes: RouteImpl<any>[], options: AppOptions = {}): A
         try {
           msg = await req.json()
         } catch {
-          return jsonFast(
-            { jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } },
-            400,
-          )
+          return {
+            status: 400,
+            text: JSON.stringify({
+              jsonrpc: '2.0',
+              id: null,
+              error: { code: -32700, message: 'Parse error' },
+            }),
+            headers: JSON_HEADERS,
+          }
         }
         const reply = await handleMcpMessage(app, msg as never)
-        if (!reply) return new Response(null, { status: 202 })
-        return jsonFast(reply, 200)
+        if (!reply) return { status: 202 }
+        return { status: 200, text: JSON.stringify(reply), headers: JSON_HEADERS }
       }
       if (options.llms && pathname === '/llms.txt') {
-        const text = renderLlmsTxt(routes, options.meta)
-        const res = new Response(text, {
+        return {
+          status: 200,
+          text: renderLlmsTxt(routes, options.meta),
           headers: { 'content-type': 'text/plain; charset=utf-8' },
-        })
-        ;(res as unknown as Record<string, unknown>)[FAST_TEXT] = text
-        return res
+        }
       }
       if (options.llms && pathname === '/llms-full.txt') {
-        const text = renderLlmsFullTxt(routes, options.meta)
-        const res = new Response(text, {
+        return {
+          status: 200,
+          text: renderLlmsFullTxt(routes, options.meta),
           headers: { 'content-type': 'text/plain; charset=utf-8' },
-        })
-        ;(res as unknown as Record<string, unknown>)[FAST_TEXT] = text
-        return res
+        }
       }
-      return await handle(req, new Ctx(req.signal, hasSeed ? seed : undefined))
+      const ctx = new Ctx(signalSource(req), hasSeed ? seed : undefined)
+      if (middleware.length) return toRawReply(await handle(req, ctx))
+      return await rawDispatch(req, ctx, pathname)
     } catch (err) {
       if (err instanceof HttpError) {
-        const res = jsonFast({ error: err.message, details: err.details }, err.status)
-        if (err.headers) for (const [k, v] of Object.entries(err.headers)) res.headers.set(k, v)
-        return res
+        return {
+          status: err.status,
+          text: JSON.stringify({ error: err.message, details: err.details }),
+          headers: err.headers ? { ...JSON_HEADERS, ...err.headers } : JSON_HEADERS,
+        }
       }
       console.error(err)
-      return jsonFast({ error: 'Internal Server Error' }, 500)
+      return { status: 500, text: JSON.stringify({ error: 'Internal Server Error' }), headers: JSON_HEADERS }
     }
   }
 
-  const app: App = { routes, fetch }
+  async function fetch(req: Request): Promise<Response> {
+    const r = await dispatchRaw(req)
+    if (r.response) return r.response
+    const res = new Response(r.text ?? null, { status: r.status, headers: r.headers })
+    if (r.text !== undefined) {
+      const duck = res as unknown as Record<string, unknown>
+      duck[FAST_TEXT] = r.text
+      duck[FAST_HEADERS] = r.headers
+    }
+    return res
+  }
+
+  const app: App = { routes, fetch, dispatchRaw }
   return app
 }

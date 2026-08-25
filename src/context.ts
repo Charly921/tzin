@@ -17,17 +17,37 @@ export function defineContext<T>(name: string): ContextKey<T> {
  * Keys carry their value type, so get/require are fully inferred.
  */
 export class Ctx {
-  #map = new Map<ContextKey<never>, unknown>()
+  /** Allocated on first use — most requests never touch the bag. */
+  #map?: Map<ContextKey<never>, unknown>
+  #signal?: AbortSignal
+  #getSignal?: () => AbortSignal | undefined
 
+  /**
+   * Accepts a ready signal or a factory. Adapters pass a factory so the
+   * AbortController + close-listener wiring only happens when something
+   * actually reads ctx.signal (SSE, channels) — not on the JSON hot path.
+   */
   constructor(
-    public readonly signal?: AbortSignal,
+    signal?: AbortSignal | (() => AbortSignal | undefined),
     seed?: ReadonlyMap<ContextKey<never>, unknown>,
   ) {
-    if (seed) for (const [k, v] of seed) this.#map.set(k, v)
+    if (typeof signal === 'function') this.#getSignal = signal
+    else this.#signal = signal
+    if (seed && seed.size > 0) {
+      this.#map = new Map(seed as ReadonlyMap<ContextKey<never>, unknown>)
+    }
+  }
+
+  get signal(): AbortSignal | undefined {
+    if (this.#signal === undefined && this.#getSignal) {
+      this.#signal = this.#getSignal()
+      this.#getSignal = undefined
+    }
+    return this.#signal
   }
 
   get<T>(key: ContextKey<T>): T | undefined {
-    return this.#map.get(key as ContextKey<never>) as T | undefined
+    return this.#map?.get(key as ContextKey<never>) as T | undefined
   }
 
   /** Read a mandatory value; a missing one is a server bug -> 500. */
@@ -38,6 +58,6 @@ export class Ctx {
   }
 
   set<T>(key: ContextKey<T>, value: T): void {
-    this.#map.set(key as ContextKey<never>, value)
+    ;(this.#map ??= new Map()).set(key as ContextKey<never>, value)
   }
 }

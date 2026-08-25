@@ -109,13 +109,15 @@ documented blow-ups compound further when `zValidator` inference enters the chai
 ### Runtime throughput
 
 100 routes · `GET /r50/item` · 64 connections · 5s (`npm run bench:http`, autocannon,
-each framework in its own process):
+each framework in its own process, 3 rotated rounds, median — order rotates so
+machine drift can't bias any variant; tzin runs from built `dist/`):
 
 | Framework | req/s | p99 |
 |---|---|---|
-| hono | ~30–38k | 3–4ms |
-| tzin | ~19–26k | 5–8ms |
-| express | ~15–17k | 7ms |
+| raw node:http (floor) | ~42k | 2–3ms |
+| hono | ~34–36k | 3ms |
+| tzin | ~30–31k | 6ms |
+| express | ~15k | 7ms |
 
 The honest decomposition (`npm run bench:pipeline`, in-process `app.fetch` with
 identical request construction):
@@ -125,10 +127,11 @@ identical request construction):
 | in-process dispatch | ~127k req/s | ~118k req/s |
 
 Framework-side, tzin matches hono (routing is a radix trie at 9.1M lookups/s,
-full TypeBox validation costs ≈0.05µs/request). The built-in Node adapter
-duck-types requests and writes pre-serialized response bodies to avoid undici's
-per-request stream machinery — closing the remaining over-network gap is
-tracked adapter polish, not framework work.
+full TypeBox validation costs ≈0.05µs/request). The Node adapter duck-types
+requests, memoizes route matches per `METHOD path`, keeps the abort signal lazy
+(wired only if something reads `ctx.signal`), and skips undici Response
+construction entirely on the JSON hot path via `app.dispatchRaw` — tzin lands
+at ~0.9x of hono over the network.
 
 ## AI-native: every API is an MCP server
 
