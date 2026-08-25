@@ -5,7 +5,7 @@ import { createInterface } from 'node:readline'
 import { PassThrough } from 'node:stream'
 import { t } from '../src/schema.js'
 import { listTools } from '../src/mcp.js'
-import { contract, impl, createApp, listen } from '../src/index.js'
+import { contract, impl, createApp, listen, middleware } from '../src/index.js'
 import { startStdioMcpFromStreams } from '../src/mcp_stdio.js'
 import type { App } from '../src/index.js'
 
@@ -220,6 +220,25 @@ describe('Node adapter error paths over the wire', () => {
       await new Promise((r) => server.close(r))
     }
   }
+
+  // Regression: 204 with a serialized "null" body crashed undici (500).
+  it.each([false, true])('204 No Content stays bodyless over the wire (middleware: %s)', async (useMiddleware) => {
+    const remove = contract({
+      method: 'DELETE',
+      path: '/items/:id',
+      params: t.Object({ id: t.String() }),
+      responses: { 204: t.Null() },
+    })
+    const app = createApp(
+      [impl(remove, async () => ({ status: 204 as const, body: null }))],
+      useMiddleware ? { middleware: [middleware(async ({ next }) => next())] } : {},
+    )
+    await withServer(app, async (port) => {
+      const res = await fetch(`http://127.0.0.1:${port}/items/abc`, { method: 'DELETE' })
+      expect(res.status).toBe(204)
+      expect(await res.text()).toBe('')
+    })
+  })
 
   it('handler crash -> clean 500 JSON, connection survives for keep-alive', async () => {
     const boom = contract({ method: 'GET', path: '/boom', responses: {} })

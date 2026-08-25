@@ -302,6 +302,20 @@ npm test          # vitest — runtime + end-to-end client + type assertions
 npm run typecheck # strict tsc across src/test/bench fixtures
 ```
 
+### Production-shaped example
+
+`examples/todo-api.ts` is the full story in one runnable file: bearer-token auth
+as onion middleware, typed context DI between middleware and handlers,
+app-scoped injected store, ownership checks, query coercion, and the generated
+`/openapi.json` + `/llms.txt` + `POST /mcp` surface from the same contracts.
+
+```sh
+npx tsx examples/todo-api.ts
+TOKEN=$(curl -s localhost:4644/auth/login -H 'content-type: application/json' \
+  -d '{"username":"ada","password":"lovelace"}' | node -pe 'JSON.parse(require("fs").readFileSync(0)).token')
+curl -s localhost:4644/todos -H "authorization: Bearer $TOKEN"
+```
+
 ### Dev server
 
 ```sh

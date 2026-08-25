@@ -75,15 +75,24 @@ export function fastResponseHeaders(res: Response): Record<string, string> | und
     | undefined
 }
 
+/** HTTP statuses that MUST NOT carry a body (1xx, 204, 304). */
+function hasBody(status: number): boolean {
+  return status !== 204 && status !== 304 && !(status >= 100 && status < 200)
+}
+
+const JSON_HEADERS = { 'content-type': 'application/json' }
+
 function jsonFast(body: unknown, status: number): Response {
-  const text = JSON.stringify(body)
-  const res = new Response(text, {
+  const text = hasBody(status) ? JSON.stringify(body) : undefined
+  const res = new Response(text ?? null, {
     status,
-    headers: { 'content-type': 'application/json' },
+    ...(text === undefined ? {} : { headers: JSON_HEADERS }),
   })
-  const duck = res as unknown as Record<string, unknown>
-  duck[FAST_TEXT] = text
-  duck[FAST_HEADERS] = { 'content-type': 'application/json' }
+  if (text !== undefined) {
+    const duck = res as unknown as Record<string, unknown>
+    duck[FAST_TEXT] = text
+    duck[FAST_HEADERS] = JSON_HEADERS
+  }
   return res
 }
 
@@ -140,8 +149,6 @@ function pathnameOf(url: string): string {
   const end = path.search(/[?#]/)
   return end === -1 ? path : path.slice(0, end)
 }
-
-const JSON_HEADERS = { 'content-type': 'application/json' }
 
 type HandlerOutcome =
   | { kind: 'raw'; response: Response }
@@ -244,6 +251,7 @@ export function createApp(routes: RouteImpl<any>[], options: AppOptions = {}): A
     }
     const out = await runRoute(hit, req, ctx)
     if (out.kind === 'raw') return { status: out.response.status, response: out.response }
+    if (!hasBody(out.status)) return { status: out.status }
     return { status: out.status, text: JSON.stringify(out.body), headers: JSON_HEADERS }
   }
 
