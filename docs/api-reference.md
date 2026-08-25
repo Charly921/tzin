@@ -99,6 +99,20 @@ return raw(new Response(null, { status: 204 }))
 
 ---
 
+### `defineConfig(config)`
+
+Define project configuration.
+
+```ts
+import { defineConfig } from '@carlos-tzin/tzin'
+
+export default defineConfig({
+  port: 3000,
+})
+```
+
+---
+
 ## App
 
 ### `createApp(routes, options?)`
@@ -219,8 +233,8 @@ Request context available in handlers and middleware.
 Define an onion-style middleware.
 
 ```ts
-const authMiddleware = middleware(async (ctx, next) => {
-  const token = ctx.headers?.authorization
+const authMiddleware = middleware(async ({ req, ctx, next }) => {
+  const token = req.headers.get('authorization')
   if (!token) throw new HttpError(401, 'unauthorized')
   ctx.set('user', await verifyToken(token))
   return next()
@@ -246,6 +260,245 @@ const app = createApp(routes, {
     provide(configKey, config),
   ],
 })
+```
+
+---
+
+## Database
+
+Import from `@carlos-tzin/tzin/db`.
+
+### `defineModel(tableName, schema, config?)`
+
+Define a typed database model.
+
+```ts
+import { defineModel } from '@carlos-tzin/tzin/db'
+import { t } from '@carlos-tzin/tzin'
+
+const User = defineModel('users', t.Object({
+  id: t.String(),
+  name: t.String(),
+  email: t.String(),
+}), { primaryKey: 'id' })
+```
+
+**Methods:**
+
+| Method | Description |
+|---|---|
+| `findById(id)` | Find by primary key |
+| `findFirst(where)` | Find first match |
+| `findMany(where?)` | Find many with query builder |
+| `create(data)` | Create a record |
+| `createMany(data)` | Create multiple records |
+| `update(id, data)` | Update by primary key |
+| `delete(id)` | Delete by primary key |
+| `deleteMany(where)` | Delete many matches |
+| `count(where?)` | Count records |
+
+### Query Builder
+
+```ts
+const users = await User.findMany()
+  .where('name', 'Ada')
+  .whereGt('age', 18)
+  .limit(10)
+  .orderBy('name', 'asc')
+  .exec()
+```
+
+**Methods:**
+
+| Method | Description |
+|---|---|
+| `where(field, value)` | Filter by equality |
+| `whereNot(field, value)` | Filter by inequality |
+| `whereGt(field, value)` | Greater than |
+| `whereLt(field, value)` | Less than |
+| `limit(n)` | Limit results |
+| `offset(n)` | Offset results |
+| `orderBy(field, direction?)` | Sort results |
+| `select(...fields)` | Pick specific fields |
+| `exec()` | Execute query |
+| `first()` | Get first result |
+| `count()` | Count results |
+
+### `setStore(store)`
+
+Set a custom store adapter (e.g., for SQL databases).
+
+```ts
+import { setStore } from '@carlos-tzin/tzin/db'
+
+setStore(new PostgresStore(connection))
+```
+
+---
+
+## Auth
+
+Import from `@carlos-tzin/tzin/auth`.
+
+### `bearerAuth(config)`
+
+JWT Bearer token authentication middleware.
+
+```ts
+import { bearerAuth, AUTH_USER } from '@carlos-tzin/tzin/auth'
+
+const app = createApp(routes, {
+  middleware: [bearerAuth({ secret: process.env.JWT_SECRET! })],
+})
+
+// In handler:
+const user = ctx.require(AUTH_USER)
+// user.id, user.sub, etc.
+```
+
+**Config:**
+
+| Property | Type | Description |
+|---|---|---|
+| `secret` | `string` | JWT signing secret |
+| `issuer` | `string` | Expected issuer |
+| `audience` | `string` | Expected audience |
+| `extractToken` | `(req) => string` | Custom token extractor |
+| `onUnauthorized` | `(req, reason) => Response` | Custom error handler |
+
+### `optionalAuth(config)`
+
+Like `bearerAuth`, but doesn't fail if no token is present.
+
+### `apiKeyAuth(config)`
+
+API key authentication middleware.
+
+```ts
+import { apiKeyAuth } from '@carlos-tzin/tzin/auth'
+
+const app = createApp(routes, {
+  middleware: [apiKeyAuth({ key: 'my-secret-key' })],
+})
+```
+
+### `signJwt(payload, secret, options?)`
+
+Sign a JWT token.
+
+```ts
+import { signJwt } from '@carlos-tzin/tzin/auth'
+
+const token = signJwt({ sub: 'user-1' }, secret, { expiresIn: '24h' })
+```
+
+### `verifyJwt(token, secret, options?)`
+
+Verify and decode a JWT token.
+
+```ts
+const payload = verifyJwt(token, secret)
+// payload.sub, payload.exp, etc.
+```
+
+### `AUTH_USER`
+
+Context key for the authenticated user.
+
+---
+
+## Jobs
+
+Import from `@carlos-tzin/tzin/jobs`.
+
+### `defineJob<Payload>(config)`
+
+Define a background job.
+
+```ts
+import { defineJob } from '@carlos-tzin/tzin/jobs'
+
+const sendEmail = defineJob<{ to: string; subject: string }>({
+  name: 'send-email',
+  maxRetries: 3,
+  retryDelay: 1000,
+  timeout: 30000,
+  handler: async (payload, ctx) => {
+    ctx.log.info('Sending email', { to: payload.to })
+    await resend.emails.send({ ... })
+  },
+})
+```
+
+### `job.enqueue(payload, options?)`
+
+Enqueue the job for processing.
+
+```ts
+const handle = await sendEmail.enqueue({ to: 'ada@example.com', subject: 'Hello' })
+console.log(handle.id) // job ID
+await handle.wait()    // wait for completion
+```
+
+### `jobContext`
+
+| Property | Description |
+|---|---|
+| `attempt` | Current attempt number (0-based) |
+| `signal` | Abort signal for cancellation |
+| `log` | Scoped logger |
+
+---
+
+## Logging
+
+Import from `@carlos-tzin/tzin/log`.
+
+### `log`
+
+Global logger instance.
+
+```ts
+import { log } from '@carlos-tzin/tzin/log'
+
+log.info('Server started', { port: 3000 })
+log.warn('Deprecated usage')
+log.error('Failed to connect', { error })
+```
+
+### `configure(config)`
+
+Configure the global logger.
+
+```ts
+import { configure } from '@carlos-tzin/tzin/log'
+
+configure({
+  level: 'debug',
+  pretty: true,     // colored output
+  timestamp: true,  // include timestamp
+})
+```
+
+### `getLogger(context?)`
+
+Get a logger with optional context prefix.
+
+```ts
+import { getLogger } from '@carlos-tzin/tzin/log'
+
+const dbLog = getLogger('db')
+dbLog.info('Query executed') // [db] INFO Query executed
+```
+
+### `log.child(prefix)`
+
+Create a child logger.
+
+```ts
+const authLog = log.child('auth')
+authLog.info('Token verified')
+// [auth] INFO Token verified
 ```
 
 ---
@@ -508,6 +761,47 @@ const mock = mockSections(getUser, { params: { id: '1' } })
 
 ---
 
+## CLI
+
+### `tzin dev [entry] [--port N]`
+
+Start dev server with hot reload. Auto-detects `src/app.ts`.
+
+```bash
+tzin dev                    # uses src/app.ts
+tzin dev src/app.ts         # explicit entry
+tzin dev --port 4000        # custom port
+```
+
+### `tzin build`
+
+Build for production with TypeScript.
+
+```bash
+tzin build                  # → dist/
+```
+
+### `tzin deploy --target <target>`
+
+Deploy to production.
+
+```bash
+tzin deploy --target node      # build + run instructions
+tzin deploy --target workers   # wrangler deploy
+```
+
+### `tzin generate <type> <name>`
+
+Generate code stubs.
+
+```bash
+tzin generate route users       # → src/routes/users.ts
+tzin generate middleware auth   # → src/middleware/auth.ts
+tzin generate test users        # → tests/users.test.ts
+```
+
+---
+
 ## Types
 
 | Type | Description |
@@ -532,3 +826,9 @@ const mock = mockSections(getUser, { params: { id: '1' } })
 | `MemberInfo` | Presence member info |
 | `RawResult` | Raw response wrapper |
 | `SseSender` | SSE producer function |
+| `Model<T>` | Database model |
+| `QueryBuilder<T>` | Query builder |
+| `Logger` | Logger interface |
+| `Job<P>` | Background job |
+| `JobContext` | Job execution context |
+| `AuthUser` | Authenticated user |
