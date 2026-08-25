@@ -54,6 +54,10 @@
     "./auth": {
       "types": "./dist/auth.d.ts",
       "default": "./dist/auth.js"
+    },
+    "./jobs": {
+      "types": "./dist/jobs.d.ts",
+      "default": "./dist/jobs.js"
     }
   },
   "files": [
