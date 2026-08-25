@@ -58,6 +58,10 @@
     "./jobs": {
       "types": "./dist/jobs.d.ts",
       "default": "./dist/jobs.js"
+    },
+    "./log": {
+      "types": "./dist/log.d.ts",
+      "default": "./dist/log.js"
     }
   },
   "files": [
