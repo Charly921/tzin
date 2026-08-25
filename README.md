@@ -14,6 +14,12 @@ measured (see [Benchmarks](#benchmarks)), but this is not yet production softwar
 npm install @carlos-tzin/tzin
 ```
 
+Or scaffold a new project:
+
+```sh
+npx create-tzin my-app
+```
+
 ## Why another framework?
 
 The TypeScript backend landscape is crowded — and still leaves real gaps:
