@@ -289,42 +289,12 @@ HTTP ✓, WS upgrade ✓, roster ✓, broadcast across connections ✓, leave di
   Request-scoped middleware can override. No decorators, no reflection, no
   container configuration files.
 
-## Roadmap
-
-- [x] Spike: contracts, router, server, typed client, OpenAPI generation
-- [x] Middleware composition (onion-style) with typed per-request context
-- [x] Adapters: Node, Bun (verified e2e), Workers (HTTP + DO-backed WebSockets, verified via miniflare/workerd)
-- [x] Streaming/SSE (`sse()` helper + `raw()` escape hatch)
-- [x] Realtime: Hub (pub/sub), Presence (TTL + diffs), mountable channel routes
-- [x] Native WebSockets for channels: Node + Bun verified, Workers via Durable Objects
-- [x] Multi-node realtime over a `MessageBus` (Redis/Postgres/Durable Objects map onto it)
-- [x] Typed client with status-discriminated unions + zero-dep browser channel client
-- [x] Optional light DI layer (`provide()` → typed singleton seeds in request context)
-- [x] AI-native toolchain: MCP (stdio + Streamable HTTP), OpenAPI 3.1, `/llms.txt`
-- [x] Batteries started: CORS middleware, bearer-auth pattern (see `examples/todo-api.ts`)
-- [ ] Phoenix-style presence replication across nodes
-- [ ] `create-tzin` scaffolding
-
 ## Development
 
 ```sh
 npm install
 npm test          # vitest — runtime + end-to-end client + type assertions
 npm run typecheck # strict tsc across src/test/bench fixtures
-```
-
-### Production-shaped example
-
-`examples/todo-api.ts` is the full story in one runnable file: bearer-token auth
-as onion middleware, typed context DI between middleware and handlers,
-app-scoped injected store, ownership checks, query coercion, and the generated
-`/openapi.json` + `/llms.txt` + `POST /mcp` surface from the same contracts.
-
-```sh
-npx tsx examples/todo-api.ts
-TOKEN=$(curl -s localhost:4644/auth/login -H 'content-type: application/json' \
-  -d '{"username":"ada","password":"lovelace"}' | node -pe 'JSON.parse(require("fs").readFileSync(0)).token')
-curl -s localhost:4644/todos -H "authorization: Bearer $TOKEN"
 ```
 
 ### Dev server
@@ -342,6 +312,17 @@ tzin dev · 2 routes
   GET     /users/:id        get_user   Look up a user by id
   POST    /users            create_user
 ```
+
+### Examples
+
+| Example | Runtime | What it shows |
+|---|---|---|
+| `examples/node-demo.ts` | Node | Minimal HTTP server with contracts |
+| `examples/bun-demo.ts` | Bun | Bun.serve with validation |
+| `examples/todo-api.ts` | Node | Full CRUD: auth middleware, DI, OpenAPI, MCP |
+| `examples/mcp-demo.ts` | Node | MCP server over stdio |
+| `examples/ws-demo.ts` | Bun | WebSocket channels with presence |
+| `examples/worker-channels.ts` | Workers | Cloudflare DO-backed channels |
 
 ## License
 
