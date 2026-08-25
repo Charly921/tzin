@@ -10,6 +10,8 @@ function usage(): never {
 
   Commands:
     tzin dev [entry] [--port N]     start dev server with hot reload
+    tzin build                      build for production
+    tzin deploy [--target <target>] deploy (node, workers)
     tzin generate route <name>      generate a route stub
     tzin generate middleware <name>  generate a middleware stub
     tzin generate test <name>       generate a test stub`)
@@ -38,6 +40,81 @@ if (cmd === 'dev') {
   const child = spawn('npx', args, { stdio: 'inherit' })
   process.on('SIGINT', () => child.kill('SIGINT'))
   child.on('exit', (code) => process.exit(code ?? 0))
+  process.exit(0)
+}
+
+// ── build ─────────────────────────────────────────────────────────────
+
+if (cmd === 'build') {
+  const cwd = process.cwd()
+
+  // Check for tsconfig
+  if (!existsSync(resolve(cwd, 'tsconfig.json'))) {
+    console.error('No tsconfig.json found')
+    process.exit(1)
+  }
+
+  // Check for src/app.ts
+  if (!existsSync(resolve(cwd, 'src/app.ts'))) {
+    console.error('No src/app.ts found. Create an app first.')
+    process.exit(1)
+  }
+
+  console.log('Building...')
+
+  const child = spawn('npx', ['tsc', '-p', 'tsconfig.json'], {
+    cwd,
+    stdio: 'inherit',
+  })
+
+  child.on('exit', (code) => {
+    if (code === 0) {
+      console.log('\n✓ Build complete → dist/')
+    }
+    process.exit(code ?? 1)
+  })
+  process.exit(0)
+}
+
+// ── deploy ────────────────────────────────────────────────────────────
+
+if (cmd === 'deploy') {
+  const cwd = process.cwd()
+  const targetFlag = rest.indexOf('--target')
+  const target = targetFlag !== -1 ? rest[targetFlag + 1] : 'node'
+
+  if (target === 'workers') {
+    console.log('Deploying to Cloudflare Workers...')
+
+    // Check for wrangler.toml
+    if (!existsSync(resolve(cwd, 'wrangler.toml'))) {
+      console.error('No wrangler.toml found. Run: npx wrangler init')
+      process.exit(1)
+    }
+
+    const child = spawn('npx', ['wrangler', 'deploy'], {
+      cwd,
+      stdio: 'inherit',
+    })
+
+    child.on('exit', (code) => process.exit(code ?? 1))
+    process.exit(0)
+  }
+
+  // Default: Node
+  console.log('Building for production...')
+
+  const build = spawn('npx', ['tsc', '-p', 'tsconfig.json'], {
+    cwd,
+    stdio: 'inherit',
+  })
+
+  build.on('exit', (code) => {
+    if (code !== 0) process.exit(code ?? 1)
+    console.log('\n✓ Build complete')
+    console.log('Run: node dist/index.js')
+    process.exit(0)
+  })
   process.exit(0)
 }
 
