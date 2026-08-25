@@ -127,8 +127,16 @@ function coerceQuery(schema: unknown, raw: Record<string, string>): Record<strin
 /** Unwrap a Response produced through the middleware path into a RawReply. */
 function toRawReply(res: Response): RawReply {
   const fast = fastResponseText(res)
-  if (fast !== undefined) return { status: res.status, text: fast, headers: fastResponseHeaders(res) }
-  return { status: res.status, response: res }
+  if (fast === undefined) return { status: res.status, response: res }
+  // The FAST_HEADERS snapshot predates any header mutations middleware made
+  // after construction (CORS vary/ACAO, rate-limit footers...), so read the
+  // live Headers here. Only apps with middleware pay this iteration; the
+  // middleware-free hot path never enters this function.
+  const headers: Record<string, string> = {}
+  res.headers.forEach((value, key) => {
+    headers[key] = value
+  })
+  return { status: res.status, text: fast, headers }
 }
 
 /**

@@ -1,11 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { createInterface } from 'node:readline'
 import { PassThrough } from 'node:stream'
 import { t } from '../src/schema.js'
 import { listTools } from '../src/mcp.js'
-import { contract, impl, createApp, listen, middleware } from '../src/index.js'
+import { contract, impl, createApp, listen, middleware, cors } from '../src/index.js'
 import { startStdioMcpFromStreams } from '../src/mcp_stdio.js'
 import type { App } from '../src/index.js'
 
@@ -298,5 +298,189 @@ describe('Node adapter error paths over the wire', () => {
       expect(wrongShape.status).toBe(400)
       expect((await wrongShape.json()).error).toBe('Invalid body')
     })
+  })
+})
+
+describe('cors middleware', () => {
+  // Simple requests carry a browser-like Origin unless overridden.
+  const get = (url: string, opts?: RequestInit) =>
+    fetch(url, {
+      ...opts,
+      headers: { origin: 'https://example.com', ...((opts?.headers as Record<string, string>) ?? {}) },
+    })
+
+  it('preflight OPTIONS is answered by middleware (204 + ACAO) without hitting the router', async () => {
+    const route = contract({ method: 'GET', path: '/data', responses: {} })
+    const app = createApp([impl(route, async () => ({ status: 200 as const, body: {} } as never))], {
+      middleware: [cors()],
+    })
+    const server = await listen(app, 0)
+    try {
+      const port = (server.address() as { port: number }).port
+      const res = await fetch(`http://127.0.0.1:${port}/data`, {
+        method: 'OPTIONS',
+        headers: { origin: 'https://example.com', 'access-control-request-method': 'GET' },
+      })
+      expect(res.status).toBe(204)
+      // default origin:'*' — the literal wildcard, not reflection
+      expect(res.headers.get('access-control-allow-origin')).toBe('*')
+      expect(res.headers.get('access-control-allow-methods')).toContain('GET')
+      expect(res.headers.get('access-control-max-age')).toBe('86400')
+      // router never matched (route is GET, OPTIONS unregistered) — middleware handled it
+    } finally {
+      server.closeAllConnections?.()
+      await new Promise((r) => server.close(r))
+    }
+  })
+
+  it('simple request gets ACAO + vary Origin in the response', async () => {
+    const route = contract({ method: 'GET', path: '/ok', responses: { 200: t.Object({ ok: t.Boolean() }) } })
+    const app = createApp([impl(route, async () => ({ status: 200 as const, body: { ok: true } }))], {
+      middleware: [cors()],
+    })
+    const server = await listen(app, 0)
+    try {
+      const port = (server.address() as { port: number }).port
+      const res = await get(`http://127.0.0.1:${port}/ok`)
+      expect(res.status).toBe(200)
+      // default origin:'*' — the literal wildcard, not reflection
+      expect(res.headers.get('access-control-allow-origin')).toBe('*')
+      expect(res.headers.get('vary')).toBe('Origin')
+    } finally {
+      server.closeAllConnections?.()
+      await new Promise((r) => server.close(r))
+    }
+  })
+
+  it('non-CORS request (no Origin) is untouched', async () => {
+    const route = contract({ method: 'GET', path: '/x', responses: {} })
+    const app = createApp([impl(route, async () => ({ status: 200 as const, body: {} } as never))], {
+      middleware: [cors()],
+    })
+    const server = await listen(app, 0)
+    try {
+      const port = (server.address() as { port: number }).port
+      const res = await fetch(`http://127.0.0.1:${port}/x`)
+      expect(res.headers.get('access-control-allow-origin')).toBeNull()
+    } finally {
+      server.closeAllConnections?.()
+      await new Promise((r) => server.close(r))
+    }
+  })
+
+  it('disallowed origin: no ACAO header (browser would block)', async () => {
+    const route = contract({ method: 'GET', path: '/x', responses: {} })
+    const app = createApp([impl(route, async () => ({ status: 200 as const, body: {} } as never))], {
+      middleware: [cors({ origin: ['https://trusted.com'] })],
+    })
+    const server = await listen(app, 0)
+    try {
+      const port = (server.address() as { port: number }).port
+      const res = await get(`http://127.0.0.1:${port}/x`)
+      expect(res.status).toBe(200) // request still succeeds, browser blocks JS access
+      expect(res.headers.get('access-control-allow-origin')).toBeNull()
+    } finally {
+      server.closeAllConnections?.()
+      await new Promise((r) => server.close(r))
+    }
+  })
+
+  it('origin:true reflects any origin and credentials:true adds the credential header', async () => {
+    const route = contract({ method: 'GET', path: '/x', responses: {} })
+    const app = createApp([impl(route, async () => ({ status: 200 as const, body: {} } as never))], {
+      middleware: [cors({ origin: true, credentials: true })],
+    })
+    const server = await listen(app, 0)
+    try {
+      const port = (server.address() as { port: number }).port
+      const res = await get(`http://127.0.0.1:${port}/x`)
+      expect(res.headers.get('access-control-allow-origin')).toBe('https://example.com')
+      expect(res.headers.get('access-control-allow-credentials')).toBe('true')
+    } finally {
+      server.closeAllConnections?.()
+      await new Promise((r) => server.close(r))
+    }
+  })
+
+  it('credentials:true with wildcard origin:* does NOT echo ACAO (invalid per spec)', async () => {
+    const route = contract({ method: 'GET', path: '/x', responses: {} })
+    const app = createApp([impl(route, async () => ({ status: 200 as const, body: {} } as never))], {
+      middleware: [cors({ credentials: true })], // defaults to origin:'*'
+    })
+    const server = await listen(app, 0)
+    try {
+      const port = (server.address() as { port: number }).port
+      const res = await get(`http://127.0.0.1:${port}/x`)
+      expect(res.headers.get('access-control-allow-origin')).toBeNull()
+    } finally {
+      server.closeAllConnections?.()
+      await new Promise((r) => server.close(r))
+    }
+  })
+
+  it('preflight with allow-list: matching origin receives 204, non-matching does not', async () => {
+    const route = contract({ method: 'GET', path: '/x', responses: {} })
+    const app = createApp([impl(route, async () => ({ status: 200 as const, body: {} } as never))], {
+      middleware: [cors({ origin: ['https://safe.com', 'https://other.com'] })],
+    })
+    const server = await listen(app, 0)
+    try {
+      const port = (server.address() as { port: number }).port
+      const good = await fetch(`http://127.0.0.1:${port}/x`, {
+        method: 'OPTIONS',
+        headers: { origin: 'https://safe.com', 'access-control-request-method': 'GET' },
+      })
+      expect(good.status).toBe(204)
+      expect(good.headers.get('access-control-allow-origin')).toBe('https://safe.com')
+
+      const bad = await fetch(`http://127.0.0.1:${port}/x`, {
+        method: 'OPTIONS',
+        headers: { origin: 'https://evil.com', 'access-control-request-method': 'GET' },
+      })
+      expect(bad.status).toBe(204) // browser blocks, no error from server
+      expect(bad.headers.get('access-control-allow-origin')).toBeNull()
+    } finally {
+      server.closeAllConnections?.()
+      await new Promise((r) => server.close(r))
+    }
+  })
+
+  it('exposeHeaders: passes through to the browser as access-control-expose-headers', async () => {
+    const route = contract({ method: 'GET', path: '/x', responses: {} })
+    const app = createApp([impl(route, async () => ({ status: 200 as const, body: {} } as never))], {
+      middleware: [cors({ exposeHeaders: ['X-Request-Id', 'X-Rate-Limit'] })],
+    })
+    const server = await listen(app, 0)
+    try {
+      const port = (server.address() as { port: number }).port
+      const res = await get(`http://127.0.0.1:${port}/x`)
+      expect(res.headers.get('access-control-expose-headers')).toBe('X-Request-Id, X-Rate-Limit')
+    } finally {
+      server.closeAllConnections?.()
+      await new Promise((r) => server.close(r))
+    }
+  })
+
+  it('preflight echoes access-control-request-headers from the browser', async () => {
+    const route = contract({ method: 'GET', path: '/x', responses: {} })
+    const app = createApp([impl(route, async () => ({ status: 200 as const, body: {} } as never))], {
+      middleware: [cors({ allowHeaders: ['Authorization', 'Content-Type'] })],
+    })
+    const server = await listen(app, 0)
+    try {
+      const port = (server.address() as { port: number }).port
+      const res = await fetch(`http://127.0.0.1:${port}/x`, {
+        method: 'OPTIONS',
+        headers: {
+          origin: 'https://example.com',
+          'access-control-request-method': 'GET',
+          'access-control-request-headers': 'X-Custom',
+        },
+      })
+      expect(res.headers.get('access-control-allow-headers')).toBe('X-Custom')
+    } finally {
+      server.closeAllConnections?.()
+      await new Promise((r) => server.close(r))
+    }
   })
 })
