@@ -861,6 +861,29 @@ describe('llms.txt generation', () => {
   })
 })
 
+describe('openapi.json endpoint', () => {
+  const oaApp = createApp(routes, { openapi: true, meta: { title: 'Demo API', version: '1.2.3' } })
+
+  it('serves a valid OpenAPI 3.1 document from contracts', async () => {
+    const res = await oaApp.fetch(new Request('http://x/openapi.json'))
+    expect(res.headers.get('content-type')).toContain('application/json')
+    const doc = (await res.json()) as Record<string, any>
+    expect(doc.openapi).toBe('3.1.0')
+    expect(doc.info.title).toBe('Demo API')
+    expect(doc.info.version).toBe('1.2.3')
+    const getOp = doc.paths['/users/{id}'].get
+    expect(getOp.operationId).toBe('get_user')
+    expect(getOp.parameters[0].name).toBe('id')
+    expect(getOp.parameters[0].in).toBe('path')
+    expect(getOp.responses['200'].content['application/json'].schema.properties.id).toBeDefined()
+  })
+
+  it('is off by default', async () => {
+    const off = createApp([healthRoute])
+    expect((await off.fetch(new Request('http://x/openapi.json'))).status).toBe(404)
+  })
+})
+
 import { joinChannel } from '../src/client-browser.js'
 
 describe('browser channels client', () => {

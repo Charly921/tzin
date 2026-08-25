@@ -162,9 +162,14 @@ const app = createApp(routes, { mcp: true }) // POST /mcp speaks JSON-RPC
 And give LLMs a map of your API straight from the contracts:
 
 ```ts
-const app = createApp(routes, { llms: true, meta: { title: 'My API' } })
+const app = createApp(routes, {
+  llms: true,
+  openapi: true,
+  meta: { title: 'My API' },
+})
 // GET /llms.txt       — index of endpoints (method, path, name, description)
 // GET /llms-full.txt  — same index plus every declared JSON Schema inline
+// GET /openapi.json   — OpenAPI 3.1 document (TypeBox == JSON Schema == OpenAPI)
 ```
 
 ## Realtime channels with presence

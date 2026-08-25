@@ -6,6 +6,7 @@ import { compose, type Middleware } from './middleware.js'
 import type { ProvidedEntry } from './provide.js'
 import { handleMcpMessage } from './mcp.js'
 import { renderLlmsTxt, renderLlmsFullTxt, type ApiMeta } from './llms.js'
+import { generateOpenApi } from './openapi.js'
 
 export interface App {
   routes: RouteImpl<any>[]
@@ -38,6 +39,8 @@ export interface AppOptions {
   mcp?: boolean
   /** Serve /llms.txt and /llms-full.txt generated from contracts. */
   llms?: boolean
+  /** Serve the OpenAPI 3.1 document at /openapi.json, generated from contracts. */
+  openapi?: boolean
   meta?: ApiMeta
 }
 
@@ -263,6 +266,18 @@ export function createApp(routes: RouteImpl<any>[], options: AppOptions = {}): A
           status: 200,
           text: renderLlmsFullTxt(routes, options.meta),
           headers: { 'content-type': 'text/plain; charset=utf-8' },
+        }
+      }
+      if (options.openapi && pathname === '/openapi.json') {
+        return {
+          status: 200,
+          text: JSON.stringify(
+            generateOpenApi(routes, {
+              title: options.meta?.title ?? 'API',
+              version: options.meta?.version ?? '0.0.0',
+            }),
+          ),
+          headers: JSON_HEADERS,
         }
       }
       const ctx = new Ctx(signalSource(req), hasSeed ? seed : undefined)
