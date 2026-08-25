@@ -62,6 +62,14 @@
     "./log": {
       "types": "./dist/log.d.ts",
       "default": "./dist/log.js"
+    },
+    "./rate-limit": {
+      "types": "./dist/rate-limit.d.ts",
+      "default": "./dist/rate-limit.js"
+    },
+    "./cache": {
+      "types": "./dist/cache.d.ts",
+      "default": "./dist/cache.js"
     }
   },
   "files": [
