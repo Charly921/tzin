@@ -1,5 +1,81 @@
 # Changelog
 
+## 1.0.0 — Stable Release
+
+The first stable release of tzin. Contract-first TypeScript framework with
+realtime, AI-native tooling, and a complete development experience.
+
+### What's new since 0.1.2
+
+#### Project Structure
+
+- Convention-based project layout: `src/routes/`, `src/middleware/`, `src/app.ts`
+- Config system: `defineConfig()`, auto-detection of `src/app.ts`
+- Dev server: `tzin dev` with hot reload and route table display
+
+#### CLI
+
+- `tzin dev [entry] [--port N]` — dev server with hot reload
+- `tzin build` — production build
+- `tzin deploy --target node|workers` — deploy to production
+- `tzin generate route <name>` — scaffold a route
+- `tzin generate middleware <name>` — scaffold middleware
+- `tzin generate test <name>` — scaffold a test
+
+#### Database
+
+- `defineModel(table, schema)` — type-safe ORM with query builder
+- `findById`, `findFirst`, `findMany` — CRUD operations
+- Chainable query builder: `.where().limit().orderBy()`
+- Extensible store adapters: `setStore(adapter)`
+
+#### Authentication
+
+- `bearerAuth({ secret })` — JWT Bearer token validation
+- `optionalAuth({ secret })` — non-strict JWT validation
+- `apiKeyAuth({ key })` — API key authentication
+- `signJwt()` / `verifyJwt()` — JWT utilities
+
+#### Jobs & Tasks
+
+- `defineJob<Payload>(config)` — background job definition
+- `job.enqueue(payload)` — job queue with retry
+- `handle.wait()` — wait for job completion
+
+#### Logging
+
+- `log.info/warn/error/fatal` — structured logging
+- `log.child(prefix)` — scoped child loggers
+- `configure({ level, pretty })` — global configuration
+
+#### Rate Limiting
+
+- `rateLimit({ max, windowMs })` — request rate limiting
+- `strictRateLimit()` — strict limiting for sensitive endpoints
+- Custom store adapters for distributed rate limiting
+
+#### Caching
+
+- `cache({ ttl })` — HTTP response caching
+- `staleWhileRevalidate()` — stale-while-revalidate pattern
+- Cache headers: X-Cache, Cache-Control, ETag
+
+#### Testing
+
+- `createTestClient(app)` — API test client
+- `expectSchema(schema, value)` — schema validation
+- `mockSections(contract)` — mock data generation
+
+#### Documentation
+
+- Complete API Reference with all modules
+- Architecture Guide
+- Updated README with feature table
+
+### Backwards Compatibility
+
+This release is backwards compatible with 0.1.x.
+
 ## 0.1.2
 
 - Added `create-tzin` scaffolding CLI (`npx create-tzin my-app`)
