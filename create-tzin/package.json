@@ -22,7 +22,9 @@
     "framework"
   ],
   "type": "module",
-  "bin": "./dist/index.js",
+  "bin": {
+    "create-tzin": "dist/index.js"
+  },
   "files": [
     "dist",
     "templates"

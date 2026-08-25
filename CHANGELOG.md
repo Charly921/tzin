@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.2
+
+- Added `create-tzin` scaffolding CLI (`npx create-tzin my-app`)
+  - Templates: Node, Bun, Cloudflare Workers
+  - Interactive and non-interactive modes
+- Added API Reference and Architecture Guide docs
+
+## 0.1.1
+
+- Documentation improvements: trimmed roadmap, added examples table
+
 ## 0.1.0 — first public release
 
 Contract-first TypeScript framework: declare a contract once, get the typed
