@@ -8,7 +8,7 @@
     "deploy": "wrangler deploy"
   },
   "dependencies": {
-    "@carlos-tzin/tzin": "^0.1.1"
+    "@carlos-tzin/tzin": "^0.1.10"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.0.0",

@@ -4,17 +4,19 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js"
+    "dev": "tzin dev",
+    "build": "tzin build",
+    "start": "node dist/index.js",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@carlos-tzin/tzin": "^0.1.1"
+    "@carlos-tzin/tzin": "^0.1.10"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "tsx": "^4.19.0",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
   },
   "engines": {
     "node": ">=20"
