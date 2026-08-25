@@ -1,9 +1,24 @@
 {
   "name": "tzin",
   "version": "0.1.0",
-  "description": "Contract-first TypeScript framework. Types that scale.",
+  "description": "Contract-first TypeScript framework. Types that scale, realtime channels with presence, and an MCP server for every API.",
   "license": "MIT",
   "author": "The tzin authors",
+  "keywords": [
+    "typescript",
+    "framework",
+    "contract-first",
+    "typebox",
+    "openapi",
+    "mcp",
+    "realtime",
+    "websockets",
+    "sse",
+    "presence",
+    "channels",
+    "http",
+    "api"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/Charly921/tzin"
@@ -33,6 +48,7 @@
   "files": [
     "dist",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "engines": {

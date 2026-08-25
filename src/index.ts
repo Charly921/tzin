@@ -46,3 +46,4 @@ export {
 export { wsChannels, type WsRoute, type WsSend, type WsChannelOptions } from './ws.js'
 export { attachChannels } from './ws-node.js'
 export { LocalBus, clusterHubs, type MessageBus } from './bus.js'
+export { cors, type CorsOptions } from './cors.js'

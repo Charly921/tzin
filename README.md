@@ -1,12 +1,18 @@
 # tzin
 
-**Contract-first TypeScript framework. Types that scale.**
+**Contract-first TypeScript framework. Types that scale. Realtime built in. AI-native from day one.**
 
 > `tzin` — from Nahuatl *-tzin*, an honorific suffix for what is valued and beloved.
 > A pact between client and server, declared once.
 
-**Status: experimental spike.** The core works end-to-end and the scaling thesis is
+[![CI](https://github.com/Charly921/tzin/actions/workflows/ci.yml/badge.svg)](https://github.com/Charly921/tzin/actions/workflows/ci.yml)
+
+**Status: experimental, pre-1.0.** The core works end-to-end and the scaling thesis is
 measured (see [Benchmarks](#benchmarks)), but this is not yet production software.
+
+```sh
+npm install tzin
+```
 
 ## Why another framework?
 
@@ -196,7 +202,7 @@ multi-node deployments wire hubs together over a message bus:
 
 ```ts
 import { Hub } from 'tzin'
-import { LocalBus } from 'tzin/bus'
+import { LocalBus, type MessageBus } from 'tzin/bus'
 
 // Any PUBLISH/SUBSCRIBE transport maps onto this 2-method interface:
 const bus: MessageBus = redisPubSubAdapter // Redis, Postgres LISTEN/NOTIFY...
@@ -287,12 +293,17 @@ HTTP ✓, WS upgrade ✓, roster ✓, broadcast across connections ✓, leave di
 
 - [x] Spike: contracts, router, server, typed client, OpenAPI generation
 - [x] Middleware composition (onion-style) with typed per-request context
-- [x] Adapters: Node (listen + streaming SSE), Bun (verified e2e), Workers (HTTP + DO-backed WebSockets, verified via miniflare/workerd)
+- [x] Adapters: Node, Bun (verified e2e), Workers (HTTP + DO-backed WebSockets, verified via miniflare/workerd)
 - [x] Streaming/SSE (`sse()` helper + `raw()` escape hatch)
 - [x] Realtime: Hub (pub/sub), Presence (TTL + diffs), mountable channel routes
-- [ ] Streaming/SSE
+- [x] Native WebSockets for channels: Node + Bun verified, Workers via Durable Objects
+- [x] Multi-node realtime over a `MessageBus` (Redis/Postgres/Durable Objects map onto it)
+- [x] Typed client with status-discriminated unions + zero-dep browser channel client
 - [x] Optional light DI layer (`provide()` → typed singleton seeds in request context)
-- [x] AI-native toolchain: built-in MCP server (`tools/list`, `tools/call`, stdio transport)
+- [x] AI-native toolchain: MCP (stdio + Streamable HTTP), OpenAPI 3.1, `/llms.txt`
+- [x] Batteries started: CORS middleware, bearer-auth pattern (see `examples/todo-api.ts`)
+- [ ] Phoenix-style presence replication across nodes
+- [ ] `create-tzin` scaffolding
 
 ## Development
 
