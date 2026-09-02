@@ -6,12 +6,12 @@
   "author": "The tzin authors",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Charly921/tzin.git",
+    "url": "git+https://github.com/Tzinny-dev/tzin.git",
     "directory": "create-tzin"
   },
-  "homepage": "https://github.com/Charly921/tzin/tree/main/create-tzin",
+  "homepage": "https://github.com/Tzinny-dev/tzin/tree/main/create-tzin",
   "bugs": {
-    "url": "https://github.com/Charly921/tzin/issues"
+    "url": "https://github.com/Tzinny-dev/tzin/issues"
   },
   "keywords": [
     "tzin",

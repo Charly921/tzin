@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1 — Repo moved to Tzinny-dev
+
+Metadata-only release after the source repository moved from
+`github.com/Charly921/tzin` to `github.com/Tzinny-dev/tzin`. No API changes.
+
 ## 1.0.0 — Stable Release
 
 The first stable release of tzin. Contract-first TypeScript framework with

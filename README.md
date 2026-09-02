@@ -5,7 +5,7 @@
 > `tzin` — from Nahuatl *-tzin*, an honorific suffix for what is valued and beloved.
 > A pact between client and server, declared once.
 
-[![CI](https://github.com/Charly921/tzin/actions/workflows/ci.yml/badge.svg)](https://github.com/Charly921/tzin/actions/workflows/ci.yml)
+[![CI](https://github.com/Tzinny-dev/tzin/actions/workflows/ci.yml/badge.svg)](https://github.com/Tzinny-dev/tzin/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/@carlos-tzin/tzin)](https://www.npmjs.com/package/@carlos-tzin/tzin)
 
 **Status: experimental, pre-1.0.** The core works end-to-end and the scaling thesis is

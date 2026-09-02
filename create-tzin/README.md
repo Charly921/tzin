@@ -1,6 +1,6 @@
 # create-tzin
 
-CLI for creating [tzin](https://github.com/Charly921/tzin) projects.
+CLI for creating [tzin](https://github.com/Tzinny-dev/tzin) projects.
 
 ## Usage
 
