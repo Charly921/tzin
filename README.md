@@ -7,6 +7,7 @@
 
 [![CI](https://github.com/Tzinny-dev/tzin/actions/workflows/ci.yml/badge.svg)](https://github.com/Tzinny-dev/tzin/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/@carlos-tzin/tzin)](https://www.npmjs.com/package/@carlos-tzin/tzin)
+[![Donate](https://img.shields.io/badge/Donate-PayPal-00457C?logo=paypal&logoColor=white)](https://paypal.me/carlostzin)
 
 **Status: experimental, pre-1.0.** The core works end-to-end and the scaling thesis is
 measured (see [Benchmarks](#benchmarks)), but this is not yet production software.
